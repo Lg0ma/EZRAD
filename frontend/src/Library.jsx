@@ -1,10 +1,23 @@
 import Modal from "react-modal";
-import React, { useState } from "react";
-import Img1 from './assets/Img1.jpeg';
-import Img2 from './assets/img2.jpeg';
-import Img3 from './assets/img3.jpeg';
+import React, { useState, useMemo } from "react";
+import { 
+  Image, 
+  Trees, 
+  Building2, 
+  Monitor, 
+  Users, 
+  Cat, 
+  Utensils, 
+  Search,
+  X,
+  Minus,
+  Plus,
+  RotateCcw,
+  ImageOff
+} from "lucide-react";
+import "./Library.css";
 
-function ImageItem({ src, alt = "Image", thumbnail }) {
+function ImageItem({ id, src, alt, thumbnail }) {
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -39,10 +52,11 @@ function ImageItem({ src, alt = "Image", thumbnail }) {
 
   return (
     <>
-      <div className="image-container" onClick={openModal} style={{ cursor: "pointer", display: "inline-block", margin: "10px" }}>
-        <img src={thumbnail || src} alt={alt} style={{ width: "200px", height: "200px", objectFit: "cover", borderRadius: "8px", transition: "transform 0.2s" }}
-          onMouseEnter={(e) => (e.target.style.transform = "scale(1.05)")}
-          onMouseLeave={(e) => (e.target.style.transform = "scale(1)")} />
+      <div className="image-card" onClick={openModal}>
+        <img src={thumbnail} alt={alt} />
+        <div className="hover-overlay">
+          <span className="image-id-badge">ID: {id}</span>
+        </div>
       </div>
 
       <Modal
@@ -50,8 +64,7 @@ function ImageItem({ src, alt = "Image", thumbnail }) {
         onRequestClose={closeModal}
         style={{
           overlay: {
-            backgroundColor: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -69,70 +82,39 @@ function ImageItem({ src, alt = "Image", thumbnail }) {
             justifyContent: "center",
           },
         }}
-        contentLabel="Image Modal"
       >
-
-        {/* Close Button */}
-        <button
-          onClick={closeModal}
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            background: "white",
-            border: "2px solid black",
-            color: "black",
-            fontSize: "26px",
-            width: "50px",
-            height: "50px",
-            borderRadius: "50%",
-            cursor: "pointer",
-            zIndex: 1001,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ×
+        <button onClick={closeModal} className="modal-close-button">
+          <X size={20} />
         </button>
 
-        {/* Zoom Buttons */}
-        <div style={{ position: "absolute", top: "20px", left: "50%", transform: "translateX(-50%) translateY(60px)", display: "flex", gap: "15px", zIndex: 1001 }}>
-          {[{ label: "Zoom Out", action: zoomOut }, { label: "Reset", action: resetZoom }, { label: "Zoom In", action: zoomIn }].map(({ label, action }) => (
-            <button
-              key={label}
-              onClick={action}
-              style={{
-                background: "white",
-                border: "2px solid black",
-                color: "black",
-                padding: "10px 20px",
-                fontSize: "18px",
-                cursor: "pointer",
-                borderRadius: "8px",
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="modal-zoom-controls">
+          <button onClick={zoomOut} className="zoom-button" title="Zoom Out">
+            <Minus size={16} />
+          </button>
+          <button onClick={resetZoom} className="zoom-button" title="Reset Zoom">
+            <RotateCcw size={16} />
+          </button>
+          <button onClick={zoomIn} className="zoom-button" title="Zoom In">
+            <Plus size={16} />
+          </button>
         </div>
 
-        {/* Image Container */}
-        <div style={{ width: "100%", height: "100%" }} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave}>
+        <div 
+          className="modal-image-container"
+          onMouseDown={handleMouseDown} 
+          onMouseMove={handleMouseMove} 
+          onMouseUp={handleMouseUp} 
+          onMouseLeave={handleMouseLeave}
+        >
           <img
             src={src}
             alt={alt}
+            className="modal-image"
             style={{
-              width: "auto",
-              height: "auto",
-              maxWidth: "100%",
-              maxHeight: "100%",
-              objectFit: "contain",
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-              transition: "transform 0.1s linear",
+              transition: isDragging ? "none" : "transform 0.2s",
               cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default",
             }}
-            onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
         </div>
@@ -142,20 +124,134 @@ function ImageItem({ src, alt = "Image", thumbnail }) {
 }
 
 function Library() {
-  const images = [
-    { src: Img1, thumbnail: Img1, alt: "Image 1" },
-    { src: Img2, thumbnail: Img2, alt: "Image 2" },
-    { src: Img3, thumbnail: Img3, alt: "Image 3" },
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Fixed list of 30 stock images with IDs
+  const allImages = [
+    { id: "IMG001", src: "https://picsum.photos/id/10/800/800", thumbnail: "https://picsum.photos/id/10/400/400", alt: "Forest Road", category: "nature" },
+    { id: "IMG002", src: "https://picsum.photos/id/20/800/800", thumbnail: "https://picsum.photos/id/20/400/400", alt: "Laptop Work", category: "technology" },
+    { id: "IMG003", src: "https://picsum.photos/id/30/800/800", thumbnail: "https://picsum.photos/id/30/400/400", alt: "Coffee Cup", category: "food" },
+    { id: "IMG004", src: "https://picsum.photos/id/40/800/800", thumbnail: "https://picsum.photos/id/40/400/400", alt: "City Night", category: "urban" },
+    { id: "IMG005", src: "https://picsum.photos/id/50/800/800", thumbnail: "https://picsum.photos/id/50/400/400", alt: "Beach Sunset", category: "nature" },
+    { id: "IMG006", src: "https://picsum.photos/id/60/800/800", thumbnail: "https://picsum.photos/id/60/400/400", alt: "Office Desk", category: "technology" },
+    { id: "IMG007", src: "https://picsum.photos/id/70/800/800", thumbnail: "https://picsum.photos/id/70/400/400", alt: "Mountain Lake", category: "nature" },
+    { id: "IMG008", src: "https://picsum.photos/id/80/800/800", thumbnail: "https://picsum.photos/id/80/400/400", alt: "Portrait", category: "people" },
+    { id: "IMG009", src: "https://picsum.photos/id/90/800/800", thumbnail: "https://picsum.photos/id/90/400/400", alt: "Strawberries", category: "food" },
+    { id: "IMG010", src: "https://picsum.photos/id/100/800/800", thumbnail: "https://picsum.photos/id/100/400/400", alt: "Beach View", category: "nature" },
+    { id: "IMG011", src: "https://picsum.photos/id/110/800/800", thumbnail: "https://picsum.photos/id/110/400/400", alt: "Car Interior", category: "technology" },
+    { id: "IMG012", src: "https://picsum.photos/id/120/800/800", thumbnail: "https://picsum.photos/id/120/400/400", alt: "Green Valley", category: "nature" },
+    { id: "IMG013", src: "https://picsum.photos/id/130/800/800", thumbnail: "https://picsum.photos/id/130/400/400", alt: "City Park", category: "urban" },
+    { id: "IMG014", src: "https://picsum.photos/id/140/800/800", thumbnail: "https://picsum.photos/id/140/400/400", alt: "Train Tracks", category: "urban" },
+    { id: "IMG015", src: "https://picsum.photos/id/145/800/800", thumbnail: "https://picsum.photos/id/145/400/400", alt: "Dog Portrait", category: "animals" },
+    { id: "IMG016", src: "https://picsum.photos/id/160/800/800", thumbnail: "https://picsum.photos/id/160/400/400", alt: "Railway", category: "urban" },
+    { id: "IMG017", src: "https://picsum.photos/id/170/800/800", thumbnail: "https://picsum.photos/id/170/400/400", alt: "Forest Path", category: "nature" },
+    { id: "IMG018", src: "https://picsum.photos/id/180/800/800", thumbnail: "https://picsum.photos/id/180/400/400", alt: "Laptop Code", category: "technology" },
+    { id: "IMG019", src: "https://picsum.photos/id/190/800/800", thumbnail: "https://picsum.photos/id/190/400/400", alt: "City Skyline", category: "urban" },
+    { id: "IMG020", src: "https://picsum.photos/id/200/800/800", thumbnail: "https://picsum.photos/id/200/400/400", alt: "Bison", category: "animals" },
+    { id: "IMG021", src: "https://picsum.photos/id/210/800/800", thumbnail: "https://picsum.photos/id/210/400/400", alt: "Brick Building", category: "urban" },
+    { id: "IMG022", src: "https://picsum.photos/id/220/800/800", thumbnail: "https://picsum.photos/id/220/400/400", alt: "Night Stars", category: "nature" },
+    { id: "IMG023", src: "https://picsum.photos/id/230/800/800", thumbnail: "https://picsum.photos/id/230/400/400", alt: "Milky Way", category: "nature" },
+    { id: "IMG024", src: "https://picsum.photos/id/240/800/800", thumbnail: "https://picsum.photos/id/240/400/400", alt: "Stairs", category: "urban" },
+    { id: "IMG025", src: "https://picsum.photos/id/250/800/800", thumbnail: "https://picsum.photos/id/250/400/400", alt: "Camera Lens", category: "technology" },
+    { id: "IMG026", src: "https://picsum.photos/id/260/800/800", thumbnail: "https://picsum.photos/id/260/400/400", alt: "Food Plate", category: "food" },
+    { id: "IMG027", src: "https://picsum.photos/id/270/800/800", thumbnail: "https://picsum.photos/id/270/400/400", alt: "Cliff Ocean", category: "nature" },
+    { id: "IMG028", src: "https://picsum.photos/id/280/800/800", thumbnail: "https://picsum.photos/id/280/400/400", alt: "Road Trip", category: "urban" },
+    { id: "IMG029", src: "https://picsum.photos/id/290/800/800", thumbnail: "https://picsum.photos/id/290/400/400", alt: "Cat Portrait", category: "animals" },
+    { id: "IMG030", src: "https://picsum.photos/id/300/800/800", thumbnail: "https://picsum.photos/id/300/400/400", alt: "Bridge View", category: "urban" },
+  ];
+
+  // Filter images based on search and category
+  const filteredImages = useMemo(() => {
+    return allImages.filter(image => {
+      const matchesSearch = image.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          image.alt.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || image.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, selectedCategory]);
+
+  const categories = [
+    { id: "all", label: "All Images", icon: Image },
+    { id: "nature", label: "Nature", icon: Trees },
+    { id: "urban", label: "Urban", icon: Building2 },
+    { id: "technology", label: "Technology", icon: Monitor },
+    { id: "people", label: "People", icon: Users },
+    { id: "animals", label: "Animals", icon: Cat },
+    { id: "food", label: "Food", icon: Utensils },
   ];
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Image Gallery</h1>
-      <p>Click an image to open it in a modal. Use zoom and pan controls.</p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-        {images.map((image, index) => (
-          <ImageItem key={index} src={image.src} thumbnail={image.thumbnail} alt={image.alt} />
-        ))}
+    <div className="gallery-container">
+      {/* Sidebar */}
+      <div className="gallery-sidebar">
+        <div className="sidebar-header">
+          <h1 className="sidebar-title">
+            <Image className="sidebar-title-icon" /> Gallery
+          </h1>
+        </div>
+
+        {/* Categories */}
+        <nav className="categories-nav">
+          {categories.map(category => {
+            const Icon = category.icon;
+            return (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`category-button ${selectedCategory === category.id ? 'active' : ''}`}
+              >
+                <Icon className="category-icon" />
+                {category.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Search Bar */}
+        <div className="search-bar-container">
+          <div className="search-wrapper">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by ID or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+
+        {/* Results Header */}
+        <div className="results-header">
+          {filteredImages.length} images found
+        </div>
+
+        {/* Image Grid */}
+        <div className="grid-container">
+          {filteredImages.length > 0 ? (
+            <div className="image-grid">
+              {filteredImages.map((image) => (
+                <ImageItem 
+                  key={image.id}
+                  id={image.id}
+                  src={image.src} 
+                  thumbnail={image.thumbnail} 
+                  alt={image.alt} 
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <ImageOff className="empty-state-icon" />
+              <div className="empty-state-text">No images found</div>
+              <div className="empty-state-subtext">Try adjusting your search or filters</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
