@@ -3,6 +3,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  flex-grow: 100%;
 }
 
 /* Main Container */
@@ -45,50 +46,27 @@
   height: 28px;
 }
 
-/* Categories Navigation */
-.categories-nav {
-  flex: 1;
-}
-
-.category-button {
-  width: 100%;
-  padding: 8px 24px;
-  border: none;
-  background: transparent;
-  color: #e8eaed;
+/* Styles for Size Slider */
+.size-control-container {
+  padding: 16px 24px;
+  border-top: 1px solid #5f6368;
   font-size: 14px;
+  margin-top: auto;
+}
+.image-size-slider {
+  width: 100%;
+  margin-top: 8px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.2s;
-  border-radius: 0 24px 24px 0;
-  margin-right: 12px;
-  text-align: left;
-  font-family: inherit;
 }
 
-.category-button:hover {
-  background: #313236;
-}
-
-.category-button.active {
-  background: #313236;
-  color: #8ab4f8;
-}
-
-.category-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
 
 /* Main Content Area */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Crucially, set overflow to hidden to contain the flex children */
+  overflow: hidden; 
 }
 
 /* Search Bar */
@@ -102,7 +80,6 @@
 
 .search-wrapper {
   flex: 1;
-  max-width: 720px;
   position: relative;
 }
 
@@ -143,16 +120,19 @@
 
 /* Image Grid Container */
 .grid-container {
-  flex: 1;
+  /* This allows the container to grow and take up the remaining space */
+  flex: 1; 
   padding: 0 24px 24px;
-  overflow-y: auto;
+  /* Add a scrollbar only when the content overflows */
+  overflow-y: auto; 
 }
 
 /* Image Grid */
 .image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
+  justify-content: flex-start;
 }
 
 /* Image Card */
@@ -164,7 +144,7 @@
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid #5f6368;
-  aspect-ratio: 1;
+  flex-shrink: 0;
 }
 
 .image-card:hover {
@@ -185,10 +165,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 40%);
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
   display: flex;
-  align-items: flex-start;
-  padding: 12px;
+  align-items: flex-end;
+  padding: 10px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
@@ -198,13 +178,24 @@
   opacity: 1;
 }
 
-.image-id-badge {
+.image-info {
   color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+  width: 100%;
+}
+
+.image-name {
   font-size: 14px;
   font-weight: 500;
-  background-color: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-date {
+  font-size: 12px;
+  color: #e0e0e0;
+  opacity: 0.9;
 }
 
 /* Modal Styles */
@@ -292,14 +283,8 @@
   .sidebar-title {
     font-size: 18px;
   }
-  
-  .category-button {
-    padding: 6px 16px;
-    font-size: 13px;
-  }
-  
+
   .image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
   }
   
@@ -320,25 +305,16 @@
     border-right: none;
     border-bottom: 1px solid #5f6368;
     padding: 8px 0;
-    max-height: 200px;
+    max-height: 150px;
+    flex-direction: column;
   }
-  
-  .categories-nav {
-    display: flex;
-    overflow-x: auto;
-    gap: 8px;
-    padding: 0 16px;
+
+  .size-control-container {
+    border-top: 1px solid #5f6368;
+    margin-top: 0;
   }
-  
-  .category-button {
-    white-space: nowrap;
-    border-radius: 20px;
-    margin: 0;
-    padding: 6px 12px;
-  }
-  
+
   .image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 8px;
   }
   
@@ -372,22 +348,14 @@
   background: #8e8e93;
 }
 
-/* Loading State */
-.loading-spinner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: #9aa0a6;
-}
-
 /* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  /* Make the empty state fill its parent container */
+  height: 100%; 
   color: #9aa0a6;
   text-align: center;
   gap: 16px;
