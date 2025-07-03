@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, FileImage, Calendar, Users, Settings, LogOut, Zap, Clock, Monitor } from 'lucide-react';
-import './index.css';
+//import './index.css';
 
 const Dashboard = ({ onNavigate, user, logout }) => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -131,9 +131,11 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
               </div>
               <div className="p-6 space-y-3">
-                <button className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  <FileImage className="w-4 h-4 mr-2" />
-                  New Exam
+              + <button
+              onClick={() => onNavigate('newExam')} // 🔹 go to the new-exam page
+              className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <FileImage className="w-4 h-4 mr-2" />
+                New Exam
                 </button>
                 <button className="w-full flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                   <Users className="w-4 h-4 mr-2" />

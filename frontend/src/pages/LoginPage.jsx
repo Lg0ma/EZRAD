@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, Activity, Monitor, FileImage, Calendar, Users, Settings, LogOut, Zap, Shield, Clock } from 'lucide-react';
-import '././index.css';
+//import '././index.css';
 
 
 const LoginPage = ({ onNavigate, login }) => {
