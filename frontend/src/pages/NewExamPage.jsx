@@ -170,7 +170,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <input
             type="text"
             placeholder="Search by name or phone number..."
-            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             onChange={(e) => handlePatientSearch(e.target.value)}
           />
         </div>
@@ -208,8 +208,8 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="text"
               value={patientData.firstName}
               onChange={(e) => handleInputChange('firstName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+             required
             />
           </div>
           <div>
@@ -218,7 +218,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="text"
               value={patientData.lastName}
               onChange={(e) => handleInputChange('lastName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
@@ -228,7 +228,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="date"
               value={patientData.dateOfBirth}
               onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
@@ -237,7 +237,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <select
               value={patientData.gender}
               onChange={(e) => handleInputChange('gender', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="">Select Gender</option>
@@ -252,7 +252,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="tel"
               value={patientData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="(555) 123-4567"
               required
             />
@@ -263,7 +263,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="email"
               value={patientData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -284,7 +284,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.examType}
             onChange={(e) => handleInputChange('examType', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
             <option value="">Select Exam Type</option>
@@ -299,7 +299,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.bodyPart}
             onChange={(e) => handleInputChange('bodyPart', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
             <option value="">Select Body Part</option>
@@ -314,7 +314,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.priority}
             onChange={(e) => handleInputChange('priority', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="routine">Routine</option>
             <option value="urgent">Urgent</option>
@@ -327,7 +327,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.orderingPhysician}
             onChange={(e) => handleInputChange('orderingPhysician', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
             <option value="">Select Physician</option>
@@ -343,7 +343,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             type="date"
             value={patientData.examDate}
             onChange={(e) => handleInputChange('examDate', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           />
         </div>
@@ -354,7 +354,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             type="time"
             value={patientData.examTime}
             onChange={(e) => handleInputChange('examTime', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           />
         </div>
@@ -364,7 +364,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.room}
             onChange={(e) => handleInputChange('room', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Select Room</option>
             {rooms.map(room => (
@@ -379,7 +379,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             value={patientData.clinicalHistory}
             onChange={(e) => handleInputChange('clinicalHistory', e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter relevant clinical history..."
           />
         </div>
@@ -497,13 +497,13 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => onNavigate('dashboard')}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Dashboard</span>
               </button>
-              <div className="h-6 w-px bg-gray-300 mx-2"></div>
-              <div className="bg-blue-600 p-2 rounded-lg">
+              <div className="h-6 w-px mx-2"></div>
+              <div className="bg-blue-600 p-2 rounded-lg bg-gray-50">
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -522,7 +522,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
@@ -580,7 +580,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <div className="flex space-x-3">
               <button
                 onClick={() => onNavigate('dashboard')}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
