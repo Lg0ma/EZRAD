@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import ImageInfoModal from './ImageInfoModal';
 import { Activity, FileImage, Calendar, Users, Settings, LogOut, Zap, Clock, Monitor } from 'lucide-react';
 //import './index.css';
 
 const Dashboard = ({ onNavigate, user, logout }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
 
   const handleLogout = () => {
@@ -114,6 +116,21 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                       }`}>
                         {exam.status}
                       </span>
+                      <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-white hover:bg-blue-800 transition-colors">
+                        Report
+                      </button>
+                      <ImageInfoModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        patientName="Smith, John"
+                        studyId="XR-2024-001"
+                        title="Chest X-Ray Study"
+                        modality="X-Ray"
+                        bodyPart="Chest"
+                        status="Complete"
+                      />
                     </div>
                   </div>
                 ))}
