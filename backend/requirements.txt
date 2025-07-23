@@ -1,0 +1,27 @@
+# FastAPI and related dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Database and Supabase
+supabase
+python-dotenv
+
+# Validation and serialization
+pydantic
+email-validator
+
+# HTTP client
+httpx
+
+# Development dependencies
+pytest
+pytest-asyncio
+requests
+
+# Image processing (optional, for future use)
+Pillow
+
+# File handling
+python-magic
+aiofiles

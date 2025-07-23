@@ -1,8 +1,70 @@
 import React, { useState } from 'react';
-import { User, Lock, Activity, Monitor, FileImage, Calendar, Users, Settings, LogOut, Zap, Shield, Clock } from 'lucide-react';
+import { User, Lock, Activity, Monitor, FileImage, Calendar, Users, Settings, LogOut, Zap, Shield, Clock, Wifi } from 'lucide-react';
 //import '././index.css';
 
 const LandingPage = ({ onNavigate }) => {
+
+  //---------------------------------------------------------------------------------------------------
+  const [apiStatus, setApiStatus] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userCount, setUserCount] = useState(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  // Function to test database by creating a test table
+  const testDatabaseConnection = async () => {
+    setIsLoading(true);
+    setApiStatus(null);
+    
+    try {
+      // Generate a unique test table name
+      const timestamp = new Date().getTime();
+      const testTableData = {
+        table_name: `test_table_${timestamp}`,
+        description: `Test table created at ${new Date().toISOString()}`,
+        columns: [
+          { name: "id", type: "SERIAL PRIMARY KEY" },
+          { name: "test_field", type: "VARCHAR(255)" },
+          { name: "created_at", type: "TIMESTAMP DEFAULT NOW()" }
+        ]
+      };
+
+      const response = await fetch('http://localhost:8000/api/v1/database/create-test-table', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testTableData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setApiStatus({ 
+          success: true, 
+          message: 'Test Table Created Successfully!', 
+          data: {
+            action: 'Table Created',
+            table: result,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        const errorData = await response.json();
+        setApiStatus({ 
+          success: false, 
+          message: `Database Error: ${response.status} - ${errorData.detail || response.statusText}` 
+        });
+      }
+    } catch (error) {
+      setApiStatus({ 
+        success: false, 
+        message: `Connection Failed: ${error.message}` 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  //---------------------------------------------------------------------------------------------------
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-blue-900">
         <nav className="flex justify-between items-center p-6">
@@ -70,12 +132,74 @@ const LandingPage = ({ onNavigate }) => {
                 <Zap className="w-5 h-5" />
                 <span>Access Workstation</span>
               </button>
-              <button className="border-2 border-blue-400 text-blue-400 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-400 hover:text-white transform hover:scale-105 transition-all duration-200">
+        {/*-------------------------------------------------------------------------------------------------------------*/}
+
+              <button 
+                onClick={testDatabaseConnection}
+                disabled={isLoading}
+                className="bg-green-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Wifi className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>{isLoading ? 'Creating Table...' : 'Test Database'}</span>
+              </button>
+              <button 
+                onClick={fetchUserCount}
+                disabled={isLoadingUsers}
+                className="bg-purple-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Users className={`w-5 h-5 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+                <span>{isLoadingUsers ? 'Loading...' : 'Get Users'}</span>
+              </button>
+              <button className="border-2 border-blue-400 text-blue-400 px-6 py-4 rounded-lg text-lg font-semibold hover:bg-blue-400 hover:text-white transform hover:scale-105 transition-all duration-200">
                 System Requirements
               </button>
             </div>
+
+        {/*-------------------------------------------------------------------------------------------------------------*/}
+
+            {/* API Status Display */}
+            {apiStatus && (
+              <div className={`mt-6 p-4 rounded-lg ${
+                apiStatus.success 
+                  ? 'bg-green-500/20 border border-green-500/50 text-green-300' 
+                  : 'bg-red-500/20 border border-red-500/50 text-red-300'
+              }`}>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    apiStatus.success ? 'bg-green-400' : 'bg-red-400'
+                  }`}></div>
+                  <span className="font-semibold">{apiStatus.message}</span>
+                </div>
+                {apiStatus.success && apiStatus.data && (
+                  <div className="mt-3 text-sm text-slate-300">
+                    {apiStatus.data.action && <p className="font-medium">Action: {apiStatus.data.action}</p>}
+                    {apiStatus.data.table && (
+                      <div className="mt-2 bg-green-600/20 p-3 rounded">
+                        <p className="font-medium text-green-200">Created Table:</p>
+                        <p>Name: {apiStatus.data.table.table_name || apiStatus.data.table.name}</p>
+                        <p>Status: {apiStatus.data.table.status || 'Created'}</p>
+                        {apiStatus.data.table.description && <p>Description: {apiStatus.data.table.description}</p>}
+                        {apiStatus.data.table.columns && (
+                          <div className="mt-2">
+                            <p className="font-medium text-green-200">Columns:</p>
+                            {apiStatus.data.table.columns.map((col, idx) => (
+                              <p key={idx} className="text-xs">• {col.name}: {col.type}</p>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs">Created: {apiStatus.data.table.created_at || new Date().toISOString()}</p>
+                      </div>
+                    )}
+                    {apiStatus.data.timestamp && (
+                      <p className="text-xs mt-2">Test completed at: {new Date(apiStatus.data.timestamp).toLocaleString()}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+        {/*-------------------------------------------------------------------------------------------------------------*/}
   
         {/* Medical themed floating elements */}
         <div className="fixed top-20 left-10 w-16 h-16 bg-blue-500/20 rounded-full animate-pulse"></div>
