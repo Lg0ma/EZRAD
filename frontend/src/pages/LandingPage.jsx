@@ -64,6 +64,48 @@ const LandingPage = ({ onNavigate }) => {
     }
   };
 
+  // Function to fetch user count from the database
+  const fetchUserCount = async () => {
+    setIsLoadingUsers(true);
+    setUserCount(null);
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/users/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const users = await response.json();
+        setUserCount(users.length);
+        setApiStatus({ 
+          success: true, 
+          message: `Found ${users.length} users in the database!`,
+          data: {
+            action: 'Users Retrieved',
+            count: users.length,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        const errorData = await response.json();
+        setApiStatus({ 
+          success: false, 
+          message: `Failed to fetch users: ${response.status} - ${errorData.detail || response.statusText}` 
+        });
+      }
+    } catch (error) {
+      setApiStatus({ 
+        success: false, 
+        message: `Connection Failed: ${error.message}` 
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
   //---------------------------------------------------------------------------------------------------
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-blue-900">
@@ -173,6 +215,11 @@ const LandingPage = ({ onNavigate }) => {
                 {apiStatus.success && apiStatus.data && (
                   <div className="mt-3 text-sm text-slate-300">
                     {apiStatus.data.action && <p className="font-medium">Action: {apiStatus.data.action}</p>}
+                    {apiStatus.data.count !== undefined && (
+                      <div className="mt-2 bg-blue-600/20 p-3 rounded">
+                        <p className="font-medium text-blue-200">User Count: {apiStatus.data.count}</p>
+                      </div>
+                    )}
                     {apiStatus.data.table && (
                       <div className="mt-2 bg-green-600/20 p-3 rounded">
                         <p className="font-medium text-green-200">Created Table:</p>
