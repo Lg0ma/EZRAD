@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 import { 
   Activity, 
   FileImage, 
@@ -150,9 +151,44 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
   const currentTime = new Date().toLocaleTimeString();
   const currentDate = new Date().toLocaleDateString();
 
-  const handleSubmit = () => {
-    // Here you would normally submit to your backend
-    console.log('Exam Data:', patientData);
+  const handleSubmit = async () => {
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      alert('Authentication error. Please log in again.');
+      return;
+    }
+
+    const { data: patientInsert, error: patientError } = await supabase
+      .from('patients')
+      .insert({
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth,
+        gender: patientData.gender,
+        phone: patientData.phone,
+        email: patientData.email,
+        address: patientData.address,
+        city: patientData.city,
+        state: patientData.state,
+        zip_code: patientData.zipCode,
+        insurance_provider: patientData.insuranceProvider,
+        policy_number: patientData.policyNumber,
+        group_number: patientData.groupNumber,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (patientError) {
+      alert('Failed to add patient: ' + patientError.message);
+      return;
+    }
+
+    console.log('Patient inserted:', patientInsert);
     alert('New exam scheduled successfully!');
     onNavigate('dashboard');
   };
