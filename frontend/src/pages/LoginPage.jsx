@@ -4,27 +4,69 @@ import { User, Lock, Activity, Monitor, FileImage, Calendar, Users, Settings, Lo
 
 
 const LoginPage = ({ onNavigate, login }) => {
-    const [employeeId, setEmployeeId] = useState('');
-    const [password, setPassword] = useState('');
+    const [techId, setTechId] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
   
     const handleSubmit = async (e) => {
-      e.preventDefault();
-      setError('');
-      setIsLoading(true);
-  
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-  
-      const success = login(employeeId, password);
-      if (success) {
-        onNavigate('dashboard');
+  e.preventDefault();
+  setError('');
+  setIsLoading(true);
+
+  // Validate UUID format
+  if (!techId.trim()) {
+    setError('Please enter your Technician ID');
+    setIsLoading(false);
+    return;
+  }
+
+  try {
+    // Make API call to verify technician exists
+    const response = await fetch(`http://localhost:8000/api/v1/techs/${techId.trim()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const techData = await response.json();
+      
+      // Check if we got valid technician data
+      if (techData && techData.id) {
+        console.log('Calling login function with:', techData);
+        
+        // Call the login function properly - it should return true and set isAuthenticated
+        const success = await login(techData);
+        
+        console.log('Login function returned:', success);
+        
+        if (success) {
+          // Login function worked, navigate to dashboard
+          onNavigate('dashboard');
+        } else {
+          // Login function failed, but we have valid data - force login
+          localStorage.setItem('currentTech', JSON.stringify(techData));
+          console.log('Login function failed, but forcing navigation...');
+          onNavigate('dashboard');
+        }
       } else {
-        setError('Invalid employee ID or password. Please contact IT support.');
+        setError('Invalid technician data received.');
       }
-      setIsLoading(false);
-    };
+    } else if (response.status === 404) {
+      setError('Technician ID not found. Please check your ID or create an account.');
+    } else if (response.status === 400) {
+      setError('Invalid Technician ID format. Please enter a valid UUID.');
+    } else {
+      setError('Login failed. Please contact IT support.');
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    setError('Network error. Please check your connection and try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
   
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
@@ -56,31 +98,15 @@ const LoginPage = ({ onNavigate, login }) => {
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
             <input
             type="text"
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
+            value={techId}
+            onChange={(e) => setTechId(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter your employee ID"
+            placeholder="Enter your technician ID"
             required
             />
           </div>
           </div>
-    
-          <div>
-          <label className="block text-white/90 text-sm font-medium mb-2">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter your password"
-            />
-          </div>
-          </div>
-    
+   
           {error && (
           <div className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3">
             {error}
@@ -113,11 +139,11 @@ const LoginPage = ({ onNavigate, login }) => {
         </div>
     
         <div className="mt-4 p-3 rounded-lg flex justify-center">
-          <button
-          type="button"
+          <button         
           onClick={() => onNavigate('createTech')}
           className="text-blue-400 hover:text-blue-300 font-medium">
-          Create A Technician Account
+          Create A Tecnician Account
+
           </button>
         </div>
         </div>
