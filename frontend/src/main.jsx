@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import NewExamPage from './pages/NewExamPage';
+import CreateTech from './pages/CreateTech';
 
 import './index.css';
 
@@ -34,6 +35,11 @@ const Main = () => {
       case 'newExam':                       
         return isAuthenticated
           ? <NewExamPage onNavigate={navigate} user={user} />
+          : <LoginPage onNavigate={navigate} login={login} />;
+          
+      case 'createTech':
+        return isAuthenticated
+          ? <CreateTech onNavigate={navigate} user={user} />
           : <LoginPage onNavigate={navigate} login={login} />;
 
       default:
