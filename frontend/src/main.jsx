@@ -36,11 +36,9 @@ const Main = () => {
         return isAuthenticated
           ? <NewExamPage onNavigate={navigate} user={user} />
           : <LoginPage onNavigate={navigate} login={login} />;
-          
+
       case 'createTech':
-        return isAuthenticated
-          ? <CreateTech onNavigate={navigate} user={user} />
-          : <LoginPage onNavigate={navigate} login={login} />;
+        return <CreateTech onNavigate={navigate} user={user} />;
 
       default:
         return <LandingPage onNavigate={navigate} />;

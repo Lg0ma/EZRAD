@@ -59,7 +59,7 @@ const CreateTech = ({ onNavigate }) => {
 
     try {
       // Prepare data for API call
-      const techData = {
+        const techData = {
         full_name: formData.fullName.trim(),
       };
       
@@ -72,7 +72,7 @@ const CreateTech = ({ onNavigate }) => {
       }
 
       // Make API call to create technician
-      const response = await fetch('/api/v1/techs/', {
+        const response = await fetch('http://localhost:8000/api/v1/techs/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
