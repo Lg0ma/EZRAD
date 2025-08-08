@@ -6,6 +6,7 @@ This file sets up the FastAPI app with the router configuration
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import os
 import logging
 import time
@@ -92,7 +93,6 @@ async def log_requests(request, call_next):
     
     return response
 
-# Startup event
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
@@ -102,23 +102,21 @@ async def startup_event():
         if hasattr(route, 'methods') and hasattr(route, 'path'):
             logger.info(f"  {list(route.methods)} {route.path}")
 
-# Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown"""
     logger.info("EZRAD API shutting down...")
 
-# Error handlers
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 errors"""
-    return {"error": "Resource not found", "path": str(request.url)}
+    return JSONResponse(status_code=404, content={"error": "Resource not found", "path": str(request.url)})
 
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle 500 errors"""
     logger.error(f"Internal error: {exc}")
-    return {"error": "Internal server error", "message": "Please try again later"}
+    return JSONResponse(status_code=500, content={"error": "Internal server error", "message": "Please try again later"})
 
 if __name__ == "__main__":
     import uvicorn

@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import NewExamPage from './pages/NewExamPage';
 import CreateTech from './pages/CreateTech';
+// import PatientPage from './pages/PatientsPage';
 
 import './index.css';
 
@@ -39,6 +40,9 @@ const Main = () => {
 
       case 'createTech':
         return <CreateTech onNavigate={navigate} user={user} />;
+
+      // case 'Patients':
+      //   return <PatientPage onNavigate={navigate} user={user} logout={logout} />
 
       default:
         return <LandingPage onNavigate={navigate} />;
