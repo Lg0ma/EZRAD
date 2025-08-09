@@ -369,6 +369,28 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     }
   ];
 
+  // Helper: format date from datetime string (local date)
+  const formatDate = (datetime) => {
+    if (!datetime) return '';
+    try {
+      const date = new Date(datetime);
+      return date.toLocaleDateString();
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper: best-effort technologist name extraction from exam data
+  const getTechnologistName = (exam = {}) => {
+    return (
+      exam.technologist ||
+      exam.tech_name ||
+      exam.technologist_name ||
+      exam.tech ||
+      ''
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
@@ -538,9 +560,13 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 patientName={selectedExam.patient}
                 studyId={selectedExam.id}
                 title={selectedExam.exam}
-                modality={selectedExam.rawData?.modality || "X-Ray"}
-                bodyPart={selectedExam.rawData?.body_part || "Not specified"}
+                modality={selectedExam.rawData?.modality}
+                bodyPart={selectedExam.rawData?.body_part}
                 status={selectedExam.status}
+                studyDate={formatDate(selectedExam.rawData?.scheduled_time || selectedExam.rawData?.exam_date || selectedExam.rawData?.created_at)}
+                studyTime={selectedExam.time}
+                technologist={getTechnologistName(selectedExam.rawData)}
+                imageUrl={selectedExam.rawData?.image_url}
               />
             )}
           </div>
@@ -553,12 +579,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
               </div>
               <div className="p-6 space-y-3">
-                <button
-                  onClick={() => onNavigate('newExam')}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 transform hover:scale-105 font-semibold">
-                  <FileImage className="w-4 h-4 mr-2" />
-                  New Exam
-                </button>
                 <button 
                   onClick={fetchExams}
                   className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium">

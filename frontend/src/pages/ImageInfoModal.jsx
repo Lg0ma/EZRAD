@@ -21,16 +21,16 @@ import Image from "/Img1.jpeg"
 export default function ImageInfoModal({
   isOpen = false,
   onClose = () => {},
-  imageUrl = "/placeholder.svg?height=400&width=600",
-  title = "Chest X-Ray Study",
-  patientName = "Smith, John",
-  studyId = "XR-2024-001",
-  studyDate = "7/7/2025",
-  studyTime = "14:30",
-  modality = "X-Ray",
-  bodyPart = "Chest",
-  technologist = "Sarah Johnson, RT(R)",
-  status = "Complete",
+  imageUrl,
+  title,
+  patientName,
+  studyId,
+  studyDate,
+  studyTime,
+  modality,
+  bodyPart,
+  technologist,
+  status,
 }) {
   const [activeTab, setActiveTab] = useState("text")
   const [textInput, setTextInput] = useState("")
@@ -163,7 +163,7 @@ export default function ImageInfoModal({
     }
   }
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status = "") => {
     switch (status.toLowerCase()) {
       case "complete":
         return "bg-green-600 hover:bg-green-700"
@@ -176,15 +176,29 @@ export default function ImageInfoModal({
     }
   }
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev || ""
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} style={{ backgroundColor: "transparent" }} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-7xl h-[95vh] bg-gray-900 text-gray-100 rounded-lg shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-7xl h-[95vh] bg-gray-900 text-gray-100 rounded-lg shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -220,8 +234,8 @@ export default function ImageInfoModal({
               <div className="p-0">
                 <div className="relative aspect-video w-full overflow-hidden">
                   <img
-                    src={Image}
-                    alt={title}
+                    src={imageUrl || Image}
+                    alt={title || 'Study Image'}
                     className="object-contain bg-black"
                   />
                 </div>
