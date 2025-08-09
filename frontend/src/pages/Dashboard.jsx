@@ -17,17 +17,24 @@ import {
 const Dashboard = ({ onNavigate, user, logout }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
-  const [activeSection, setActiveSection] = useState('overview');
-  const [recentExams, setRecentExams] = useState([]);
+  const [allExams, setAllExams] = useState([]); // Store all fetched exams
+  const [todayExams, setTodayExams] = useState([]); // Today's exams specifically
+  const [displayExams, setDisplayExams] = useState([]); // Exams to display in the queue
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [quickStats, setQuickStats] = useState({
-    todayExams: 0,
-    pendingExams: 0,
-    operationalSystems: 3,
-    averageTime: '12m'
-  });
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  
+  // Statistics derived from fetched data
+  const [statistics, setStatistics] = useState({
+    totalToday: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    cancelled: 0,
+    upcoming: 0,
+    averageTime: '0m',
+    operationalSystems: 3
+  });
 
   const handleLogout = () => {
     logout();
@@ -54,7 +61,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
 
   // Format exam ID
   const formatExamId = (id, createdAt) => {
-    const year = new Date(createdAt).getFullYear();
+    const year = new Date(createdAt || new Date()).getFullYear();
     const paddedId = String(id).padStart(3, '0');
     return `XR-${year}-${paddedId}`;
   };
@@ -67,17 +74,30 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       'completed': 'Complete',
       'cancelled': 'Cancelled'
     };
-    return statusMap[status?.toLowerCase()] || status;
+    return statusMap[status?.toLowerCase()] || status || 'Scheduled';
   };
 
-  // Fetch exams from API
-  const fetchExams = async () => {
-    setIsLoading(true);
-    setError(null);
-    
+  // Check if an exam is today
+  const isToday = (dateString) => {
+    if (!dateString) return false;
+    const examDate = new Date(dateString);
+    const today = new Date();
+    return examDate.toDateString() === today.toDateString();
+  };
+
+  // Check if an exam is upcoming (within next 24 hours)
+  const isUpcoming = (dateString) => {
+    if (!dateString) return false;
+    const examDate = new Date(dateString);
+    const now = new Date();
+    const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    return examDate > now && examDate <= in24Hours;
+  };
+
+  // Fetch patient information by ID
+  const fetchPatientById = async (patientId) => {
     try {
-      // Fetch today's exams
-      const response = await fetch('http://localhost:8000/api/v1/exams/today', {
+      const response = await fetch(`http://localhost:8000/api/v1/patients/${patientId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -85,78 +105,221 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       });
 
       if (!response.ok) {
-        // If today's exams fail, try to get all recent exams
-        const allExamsResponse = await fetch('http://localhost:8000/api/v1/exams/?limit=10', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!allExamsResponse.ok) {
-          throw new Error('Failed to fetch exams');
-        }
-
-        const allData = await allExamsResponse.json();
-        
-        // Format the exam data for display
-        const formattedExams = allData.slice(0, 4).map(exam => ({
-          id: formatExamId(exam.id, exam.created_at),
-          patient: exam.patient_name,
-          exam: exam.exam_type || 'X-Ray',
-          time: formatTime(exam.scheduled_time || exam.created_at),
-          status: formatStatus(exam.status),
-          rawData: exam // Keep raw data for modal
-        }));
-
-        setRecentExams(formattedExams);
-      } else {
-        const data = await response.json();
-        
-        // Format the exam data for display
-        const formattedExams = data.slice(0, 4).map(exam => ({
-          id: formatExamId(exam.id, exam.created_at),
-          patient: exam.patient_name,
-          exam: exam.exam_type || 'X-Ray',
-          time: formatTime(exam.scheduled_time || exam.created_at),
-          status: formatStatus(exam.status),
-          rawData: exam // Keep raw data for modal
-        }));
-
-        setRecentExams(formattedExams);
+        throw new Error(`Failed to fetch patient ${patientId}`);
       }
 
-      // Fetch statistics for quick stats
-      const statsResponse = await fetch('http://localhost:8000/api/v1/exams/statistics', {
+      const patientData = await response.json();
+      return {
+        id: patientData.id,
+        name: `${patientData.last_name}, ${patientData.first_name}`,
+        firstName: patientData.first_name,
+        lastName: patientData.last_name,
+        fullData: patientData
+      };
+    } catch (error) {
+      console.error(`Error fetching patient ${patientId}:`, error);
+      return {
+        id: patientId,
+        name: 'Unknown Patient',
+        firstName: 'Unknown',
+        lastName: 'Patient',
+        fullData: null
+      };
+    }
+  };
+
+  // Fetch multiple patients efficiently
+  const fetchPatientsForExams = async (exams) => {
+    const patientIds = [...new Set(exams.map(exam => exam.patient_id).filter(Boolean))];
+    
+    if (patientIds.length === 0) {
+      return {};
+    }
+
+    console.log(`Fetching patient data for ${patientIds.length} unique patients...`);
+    
+    // Fetch all patients concurrently
+    const patientPromises = patientIds.map(id => fetchPatientById(id));
+    const patients = await Promise.allSettled(patientPromises);
+    
+    // Create a map of patient_id -> patient data
+    const patientMap = {};
+    patients.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        patientMap[patientIds[index]] = result.value;
+      } else {
+        patientMap[patientIds[index]] = {
+          id: patientIds[index],
+          name: 'Unknown Patient',
+          firstName: 'Unknown',
+          lastName: 'Patient',
+          fullData: null
+        };
+      }
+    });
+
+    return patientMap;
+  };
+
+  // Calculate statistics from exam data
+  const calculateStatistics = (exams) => {
+    const stats = {
+      totalToday: 0,
+      pending: 0,
+      inProgress: 0,
+      completed: 0,
+      cancelled: 0,
+      upcoming: 0,
+      averageTime: '12m',
+      operationalSystems: 3
+    };
+
+    exams.forEach(exam => {
+      // Check date for today's exams
+      const examDateField = exam.scheduled_time || exam.exam_date || exam.created_at;
+      if (isToday(examDateField)) {
+        stats.totalToday++;
+      }
+
+      // Count by status
+      const status = exam.status?.toLowerCase() || 'pending';
+      switch (status) {
+        case 'pending':
+          stats.pending++;
+          if (isUpcoming(examDateField)) {
+            stats.upcoming++;
+          }
+          break;
+        case 'in_progress':
+          stats.inProgress++;
+          break;
+        case 'completed':
+          stats.completed++;
+          break;
+        case 'cancelled':
+          stats.cancelled++;
+          break;
+        default:
+          stats.pending++; // Default to pending if status unknown
+      }
+    });
+
+    // Calculate average time if we have completed exams with time data
+    const completedWithTime = exams.filter(e => 
+      e.status === 'completed' && e.scheduled_time && e.completed_time
+    );
+    
+    if (completedWithTime.length > 0) {
+      const totalMinutes = completedWithTime.reduce((sum, exam) => {
+        const start = new Date(exam.scheduled_time);
+        const end = new Date(exam.completed_time);
+        const diffMinutes = Math.round((end - start) / 60000);
+        return sum + diffMinutes;
+      }, 0);
+      const avgMinutes = Math.round(totalMinutes / completedWithTime.length);
+      stats.averageTime = `${avgMinutes}m`;
+    }
+
+    return stats;
+  };
+
+  // Format exam for display with patient name
+  const formatExamForDisplay = (exam, patientMap = {}) => {
+    const patient = patientMap[exam.patient_id];
+    
+    return {
+      id: formatExamId(exam.id, exam.created_at),
+      patient: patient ? patient.name : (exam.patient_name || 'Unknown Patient'),
+      exam: exam.exam_type || 'X-Ray',
+      time: formatTime(exam.scheduled_time || exam.exam_time || exam.created_at),
+      status: formatStatus(exam.status),
+      rawData: exam,
+      patientData: patient
+    };
+  };
+
+  // Comprehensive fetch function
+  const fetchExams = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Fetching exams...');
+      
+      // First, fetch ALL exams to get complete data
+      const allExamsResponse = await fetch('http://localhost:8000/api/v1/exams/?limit=100', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      if (statsResponse.ok) {
-        const stats = await statsResponse.json();
-        setQuickStats({
-          todayExams: stats.today_exams || 0,
-          pendingExams: stats.pending_exams || 0,
-          operationalSystems: 3, // This would come from equipment API
-          averageTime: '12m' // This would be calculated from exam durations
-        });
+      if (!allExamsResponse.ok) {
+        throw new Error('Failed to fetch exams');
       }
 
+      const allExamsData = await allExamsResponse.json();
+      console.log(`Fetched ${allExamsData.length} exams`);
+      
+      setAllExams(allExamsData);
+
+      // Filter today's exams
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      
+      const todaysExams = allExamsData.filter(exam => {
+        const examDate = exam.scheduled_time || exam.exam_date || exam.created_at;
+        if (!examDate) return false;
+        
+        // Check if it's today
+        const examDateString = examDate.split('T')[0];
+        return examDateString === todayString;
+      });
+
+      setTodayExams(todaysExams);
+
+      // Determine what to display in the queue
+      // If we have today's exams, show them; otherwise show recent exams
+      const examsToDisplay = todaysExams.length > 0 
+        ? todaysExams.slice(0, 4)
+        : allExamsData.slice(0, 4);
+
+      // Fetch patient data for the exams we're displaying
+      console.log('Fetching patient data for displayed exams...');
+      const patientMap = await fetchPatientsForExams(examsToDisplay);
+
+      // Format exams for display with patient names
+      const formattedExams = examsToDisplay.map(exam => formatExamForDisplay(exam, patientMap));
+      setDisplayExams(formattedExams);
+
+      // Calculate all statistics from the fetched data
+      const stats = calculateStatistics(allExamsData);
+      setStatistics(stats);
+
       setLastRefresh(new Date());
+      
     } catch (err) {
       console.error('Error fetching exams:', err);
       setError('Failed to load exam data');
       
-      // Set fallback data if API fails
+      // Set fallback data
       const fallbackData = [
         { id: 'XR-2024-001', patient: 'Smith, John', exam: 'Chest X-Ray', time: '14:30', status: 'Complete' },
         { id: 'XR-2024-002', patient: 'Johnson, Mary', exam: 'Hand X-Ray', time: '14:45', status: 'In Progress' },
         { id: 'XR-2024-003', patient: 'Williams, Robert', exam: 'Spine X-Ray', time: '15:00', status: 'Scheduled' },
         { id: 'XR-2024-004', patient: 'Brown, Lisa', exam: 'Knee X-Ray', time: '15:15', status: 'Scheduled' }
       ];
-      setRecentExams(fallbackData);
+      setDisplayExams(fallbackData);
+      setStatistics({
+        totalToday: 4,
+        pending: 2,
+        inProgress: 1,
+        completed: 1,
+        cancelled: 0,
+        upcoming: 2,
+        averageTime: '12m',
+        operationalSystems: 3
+      });
     } finally {
       setIsLoading(false);
     }
@@ -178,29 +341,29 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     setIsModalOpen(true);
   };
 
-  // Format quick stats for display
+  // Format quick stats for display based on actual data
   const getQuickStats = () => [
     { 
       label: 'Today\'s Exams', 
-      value: String(quickStats.todayExams), 
-      change: quickStats.todayExams > 0 ? `${quickStats.pendingExams} pending` : 'No exams scheduled', 
+      value: String(statistics.totalToday), 
+      change: statistics.pending > 0 ? `${statistics.pending} pending` : 'All completed', 
       icon: FileImage 
     },
     { 
       label: 'Queue Status', 
-      value: String(quickStats.pendingExams), 
+      value: String(statistics.pending), 
       change: 'Pending studies', 
       icon: Clock 
     },
     { 
       label: 'Equipment Status', 
-      value: `${quickStats.operationalSystems}/3`, 
+      value: `${statistics.operationalSystems}/3`, 
       change: 'All systems operational', 
       icon: Monitor 
     },
     { 
       label: 'Average Time', 
-      value: quickStats.averageTime, 
+      value: statistics.averageTime, 
       change: 'Per examination', 
       icon: Zap 
     }
@@ -243,7 +406,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       </nav>
 
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Quick Stats */}
+        {/* Quick Stats - Now using real data */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {getQuickStats().map((stat, index) => (
             <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6">
@@ -269,7 +432,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white flex items-center">
                   <Calendar className="w-5 h-5 mr-2 text-blue-400" />
-                  Today's Exam Queue
+                  {todayExams.length > 0 ? "Today's Exam Queue" : "Recent Exams"}
                 </h3>
                 <button
                   onClick={fetchExams}
@@ -293,14 +456,14 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 </div>
               )}
               
-              {isLoading && recentExams.length === 0 ? (
+              {isLoading && displayExams.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                   <span className="ml-3 text-slate-300">Loading exams...</span>
                 </div>
-              ) : recentExams.length > 0 ? (
+              ) : displayExams.length > 0 ? (
                 <div className="space-y-4">
-                  {recentExams.map((exam) => (
+                  {displayExams.map((exam) => (
                     <div key={exam.id} className="flex items-center justify-between p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
                       <div className="flex items-center space-x-4">
                         <div className="flex-shrink-0">
@@ -309,6 +472,12 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                         <div>
                           <p className="text-sm font-medium text-white">{exam.patient}</p>
                           <p className="text-sm text-slate-300">{exam.exam} • {exam.id}</p>
+                          {exam.patientData && exam.patientData.fullData && (
+                            <p className="text-xs text-slate-400">
+                              DOB: {exam.patientData.fullData.date_of_birth} • 
+                              {exam.patientData.fullData.gender ? ` ${exam.patientData.fullData.gender}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex items-center space-x-3">
@@ -334,7 +503,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
               ) : (
                 <div className="text-center py-8">
                   <FileImage className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-                  <p className="text-slate-300">No exams scheduled for today</p>
+                  <p className="text-slate-300">No exams found</p>
                   <button
                     onClick={() => onNavigate('newExam')}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -344,11 +513,19 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 </div>
               )}
               
-              <button 
-                onClick={() => onNavigate('newExam')}
-                className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 transform hover:scale-105 font-semibold">
-                View Full Schedule
-              </button>
+              <div className="mt-4 flex gap-2">
+                <button 
+                  onClick={() => onNavigate('newExam')}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 transform hover:scale-105 font-semibold">
+                  Schedule New Exam
+                </button>
+                {allExams.length > 4 && (
+                  <button 
+                    className="flex-1 px-4 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all duration-200 font-semibold border border-white/20">
+                    View All ({allExams.length} total)
+                  </button>
+                )}
+              </div>
             </div>
             
             {selectedExam && (
@@ -368,8 +545,9 @@ const Dashboard = ({ onNavigate, user, logout }) => {
             )}
           </div>
 
-          {/* Quick Actions */}
+          {/* Right Sidebar */}
           <div className="space-y-6">
+            {/* Quick Actions */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
@@ -429,31 +607,43 @@ const Dashboard = ({ onNavigate, user, logout }) => {
               </div>
             </div>
 
-            {/* Data Summary */}
+            {/* Today's Summary - Now using real data */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
-                <h3 className="text-lg font-semibold text-white">Today's Summary</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  {todayExams.length > 0 ? "Today's Summary" : "Recent Activity"}
+                </h3>
               </div>
               <div className="p-6 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Total Exams</span>
-                  <span className="text-white font-medium">{quickStats.todayExams}</span>
+                  <span className="text-white font-medium">
+                    {todayExams.length > 0 ? statistics.totalToday : allExams.length}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Pending</span>
-                  <span className="text-yellow-300 font-medium">{quickStats.pendingExams}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Completed</span>
-                  <span className="text-green-300 font-medium">
-                    {recentExams.filter(e => e.status === 'Complete').length}
-                  </span>
+                  <span className="text-yellow-300 font-medium">{statistics.pending}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">In Progress</span>
-                  <span className="text-blue-300 font-medium">
-                    {recentExams.filter(e => e.status === 'In Progress').length}
-                  </span>
+                  <span className="text-blue-300 font-medium">{statistics.inProgress}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Completed</span>
+                  <span className="text-green-300 font-medium">{statistics.completed}</span>
+                </div>
+                {statistics.cancelled > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cancelled</span>
+                    <span className="text-red-300 font-medium">{statistics.cancelled}</span>
+                  </div>
+                )}
+                <div className="pt-2 mt-2 border-t border-white/10">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Upcoming (24h)</span>
+                    <span className="text-cyan-300 font-medium">{statistics.upcoming}</span>
+                  </div>
                 </div>
               </div>
             </div>

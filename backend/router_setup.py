@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 # Import your route modules here (with error handling)
 try:
-    from .routes import exams, images, database, techs
+    from .routes import exams, images, database, techs, patients
     ROUTES_AVAILABLE = True
 except ImportError:
     try:
-        from routes import exams, images, database, techs
+        from routes import exams, images, database, techs, patients
         ROUTES_AVAILABLE = True
     except ImportError as e:
         logger.warning(f"Route modules not available: {e}")
@@ -66,6 +66,14 @@ def setup_routers():
             responses={404: {"description": "Technician not found"}}
         )
         
+        # Patient management routes
+        api_router.include_router(
+            patients.router,
+            prefix="/patients",
+            tags=["patients"],
+            responses={404: {"description": "Patient not found"}}
+        )
+        
         # Exam management routes
         api_router.include_router(
             exams.router,
@@ -108,6 +116,7 @@ async def get_system_stats():
     """
     return {
         "total_users": 0,
+        "total_patients": 0,
         "total_exams": 0,
         "total_images": 0,
         "system_status": "operational"
