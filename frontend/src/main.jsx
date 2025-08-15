@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import NewExamPage from './pages/NewExamPage';
 import CreateTech from './pages/CreateTech';
+import ImageUploadTestPage from './pages/ImageUploadTestPage';
 // import PatientPage from './pages/PatientsPage';
 
 import './index.css';
@@ -40,6 +41,11 @@ const Main = () => {
 
       case 'createTech':
         return <CreateTech onNavigate={navigate} user={user} />;
+
+      case 'imageUploadTest':
+        return isAuthenticated
+          ? <ImageUploadTestPage onNavigate={navigate} />
+          : <LoginPage onNavigate={navigate} login={login} />;
 
       // case 'Patients':
       //   return <PatientPage onNavigate={navigate} user={user} logout={logout} />

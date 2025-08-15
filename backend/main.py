@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 import os
 import logging
 import time
-
+import asyncio
+from routes.socket_server import start_socket_server
 # Import the router setup
 try:
     from router_setup import setup_routers, RouterConfig
@@ -101,6 +102,14 @@ async def startup_event():
     for route in app.routes:
         if hasattr(route, 'methods') and hasattr(route, 'path'):
             logger.info(f"  {list(route.methods)} {route.path}")
+
+    # Start socket server in background
+    try:
+        asyncio.create_task(start_socket_server())
+        logger.info("Socket server started in background")
+    except Exception as e:
+        logger.error(f"Failed to start socket server: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():

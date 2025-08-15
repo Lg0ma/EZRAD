@@ -585,9 +585,10 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Refresh Data
                 </button>
-                <button className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium">
+                <button className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium"
+                  onClick={() => onNavigate('imageUploadTest')}>
                   <Users className="w-4 h-4 mr-2" />
-                  Patient Search
+                  Image Test
                 </button>
                 <button className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium">
                   <Monitor className="w-4 h-4 mr-2" />
