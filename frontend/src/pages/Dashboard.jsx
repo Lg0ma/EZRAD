@@ -41,7 +41,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     onNavigate('home');
   };
 
-  const currentTime = new Date().toLocaleTimeString();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const currentDate = new Date().toLocaleDateString();
 
   // Format time from datetime string
@@ -300,24 +300,19 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       
     } catch (err) {
       console.error('Error fetching exams:', err);
-      setError('Failed to load exam data');
-      
-      // Set fallback data
-      const fallbackData = [
-        { id: 'XR-2024-001', patient: 'Smith, John', exam: 'Chest X-Ray', time: '14:30', status: 'Complete' },
-        { id: 'XR-2024-002', patient: 'Johnson, Mary', exam: 'Hand X-Ray', time: '14:45', status: 'In Progress' },
-        { id: 'XR-2024-003', patient: 'Williams, Robert', exam: 'Spine X-Ray', time: '15:00', status: 'Scheduled' },
-        { id: 'XR-2024-004', patient: 'Brown, Lisa', exam: 'Knee X-Ray', time: '15:15', status: 'Scheduled' }
-      ];
-      setDisplayExams(fallbackData);
+      setError('Failed to load exam data. Please check the connection.');
+      // Clear data on error to avoid showing stale information
+      setDisplayExams([]);
+      setAllExams([]);
+      setTodayExams([]);
       setStatistics({
-        totalToday: 4,
-        pending: 2,
-        inProgress: 1,
-        completed: 1,
+        totalToday: 0,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
         cancelled: 0,
-        upcoming: 2,
-        averageTime: '12m',
+        upcoming: 0,
+        averageTime: '0m',
         operationalSystems: 3
       });
     } finally {
@@ -525,7 +520,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
               ) : (
                 <div className="text-center py-8">
                   <FileImage className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-                  <p className="text-slate-300">No exams found</p>
+                  <p className="text-slate-300">No exams scheduled</p>
                   <button
                     onClick={() => onNavigate('newExam')}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

@@ -166,13 +166,13 @@ export default function ImageInfoModal({
   const getStatusColor = (status = "") => {
     switch (status.toLowerCase()) {
       case "complete":
-        return "bg-green-600 hover:bg-green-700"
+        return "bg-green-500/20 text-green-300 border border-green-500/30"
       case "in progress":
-        return "bg-yellow-600 hover:bg-yellow-700"
+        return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
       case "scheduled":
-        return "bg-blue-600 hover:bg-blue-700"
+        return "bg-blue-500/20 text-blue-300 border border-blue-500/30"
       default:
-        return "bg-gray-600 hover:bg-gray-700"
+        return "bg-gray-500/20 text-gray-300 border border-gray-500/30"
     }
   }
 
@@ -192,22 +192,22 @@ export default function ImageInfoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-7xl h-[95vh] bg-gray-900 text-gray-100 rounded-lg shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-7xl h-[95vh] bg-white/10 backdrop-blur-xl text-gray-100 rounded-2xl shadow-2xl overflow-hidden border border-white/20">
         {/* Modal Header */}
-        <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="bg-white/5 border-b border-white/20 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <FileImage className="w-6 h-6 text-blue-400" />
             <h2 className="text-xl font-semibold text-white">Image Analysis Report</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white hover:bg-gray-700 p-2 rounded-md transition-colors"
+            className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -217,7 +217,7 @@ export default function ImageInfoModal({
           {/* Main Content */}
           <div className="flex-1 p-6 space-y-4 overflow-y-auto">
             {/* Image Display */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg">
+            <div className="bg-white/5 border border-white/20 rounded-xl">
               <div className="px-6 py-4 pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -244,7 +244,7 @@ export default function ImageInfoModal({
 
             {/* Study Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white/5 border border-white/20 rounded-xl p-3">
                 <div className="flex items-center space-x-3">
                   <User className="w-5 h-5 text-blue-400" />
                   <div>
@@ -254,7 +254,7 @@ export default function ImageInfoModal({
                 </div>
               </div>
 
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white/5 border border-white/20 rounded-xl p-3">
                 <div className="flex items-center space-x-3">
                   <Calendar className="w-5 h-5 text-green-400" />
                   <div>
@@ -264,7 +264,7 @@ export default function ImageInfoModal({
                 </div>
               </div>
 
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white/5 border border-white/20 rounded-xl p-3">
                 <div className="flex items-center space-x-3">
                   <Camera className="w-5 h-5 text-purple-400" />
                   <div>
@@ -274,13 +274,13 @@ export default function ImageInfoModal({
                 </div>
               </div>
 
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white/5 border border-white/20 rounded-xl p-3">
                 <div className="flex items-center space-x-3">
                   <Clock className="w-5 h-5 text-yellow-400" />
                   <div>
                     <p className="text-xs text-gray-400">Status</p>
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${getStatusColor(status)}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}
                     >
                       {status}
                     </span>
@@ -290,7 +290,7 @@ export default function ImageInfoModal({
             </div>
 
             {/* Study Details */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg">
+            <div className="bg-white/5 border border-white/20 rounded-xl">
               <div className="px-6 py-3">
                 <h3 className="text-lg font-semibold text-white">Study Information</h3>
               </div>
@@ -318,9 +318,9 @@ export default function ImageInfoModal({
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+          <div className="w-96 bg-white/5 border-l border-white/20 flex flex-col">
             {/* Notes Section Header */}
-            <div className="p-6 pb-4 border-b border-gray-700">
+            <div className="p-6 pb-4 border-b border-white/20">
               <h3 className="text-lg font-semibold text-white">Clinical Notes</h3>
             </div>
 
@@ -328,13 +328,13 @@ export default function ImageInfoModal({
             <div className="flex-1 flex flex-col p-6 pt-4">
               <div className="flex-1 flex flex-col">
                 {/* Custom Tab List */}
-                <div className="grid grid-cols-2 bg-gray-700/50 p-1 rounded-lg mb-4 border border-gray-600">
+                <div className="grid grid-cols-2 bg-black/20 p-1 rounded-lg mb-4 border border-white/10">
                   <button
                     onClick={() => setActiveTab("text")}
                     className={`flex items-center justify-center py-2.5 px-4 rounded-md font-medium transition-all duration-200 ${
                       activeTab === "text"
                         ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-300 hover:text-white hover:bg-gray-600/50"
+                        : "text-gray-300 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     <Type className="w-4 h-4 mr-2" />
@@ -345,7 +345,7 @@ export default function ImageInfoModal({
                     className={`flex items-center justify-center py-2.5 px-4 rounded-md font-medium transition-all duration-200 ${
                       activeTab === "voice"
                         ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-300 hover:text-white hover:bg-gray-600/50"
+                        : "text-gray-300 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     <Mic className="w-4 h-4 mr-2" />
@@ -360,14 +360,14 @@ export default function ImageInfoModal({
                       placeholder="Enter clinical observations..."
                       value={textInput}
                       onChange={(e) => setTextInput(e.target.value)}
-                      className="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 resize-none text-sm p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 bg-black/20 border border-white/20 text-white placeholder-gray-400 resize-none text-sm p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <div className="flex justify-between items-center">
                       <p className="text-xs text-gray-400">{textInput.length} characters</p>
                       <button
                         onClick={() => setTextInput("")}
                         disabled={!textInput}
-                        className="bg-gray-700 border border-gray-600 text-gray-300 hover:bg-gray-600 h-8 px-3 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20 h-8 px-3 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Clear
                       </button>
@@ -382,7 +382,7 @@ export default function ImageInfoModal({
                       {!isRecording ? (
                         <button
                           onClick={startRecording}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-md font-medium transition-colors flex items-center justify-center"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
                         >
                           <Mic className="w-4 h-4 mr-2" />
                           Record
@@ -390,7 +390,7 @@ export default function ImageInfoModal({
                       ) : (
                         <button
                           onClick={stopRecording}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white h-10 px-4 rounded-md font-medium transition-colors flex items-center justify-center"
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white h-10 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
                         >
                           <MicOff className="w-4 h-4 mr-2" />
                           Stop
@@ -401,13 +401,13 @@ export default function ImageInfoModal({
                         <>
                           <button
                             onClick={!isPlaying ? playAudio : pauseAudio}
-                            className="bg-gray-600 border border-gray-500 text-gray-300 hover:bg-gray-500 h-10 px-3 rounded-md transition-colors flex items-center justify-center"
+                            className="bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20 h-10 px-3 rounded-lg transition-colors flex items-center justify-center"
                           >
                             {!isPlaying ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={clearRecording}
-                            className="bg-gray-600 border border-gray-500 text-gray-300 hover:bg-gray-500 h-10 px-3 rounded-md transition-colors flex items-center justify-center"
+                            className="bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20 h-10 px-3 rounded-lg transition-colors flex items-center justify-center"
                           >
                             <Square className="w-4 h-4" />
                           </button>
@@ -438,7 +438,7 @@ export default function ImageInfoModal({
                             </button>
                           )}
                         </div>
-                        <div className="flex-1 p-3 bg-gray-700 rounded-lg border border-gray-600 overflow-y-auto min-h-[200px]">
+                        <div className="flex-1 p-3 bg-black/20 rounded-lg border border-white/20 overflow-y-auto min-h-[200px]">
                           <p className="text-sm text-gray-200 whitespace-pre-wrap">
                             {transcript}
                             {pendingTranscript && <span className="text-gray-400 italic">{pendingTranscript}</span>}
@@ -452,7 +452,7 @@ export default function ImageInfoModal({
 
                     {/* Placeholder when no recording */}
                     {!transcript && !pendingTranscript && !isRecording && (
-                      <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-600 rounded-lg">
+                      <div className="flex-1 flex items-center justify-center border-2 border-dashed border-white/30 rounded-lg">
                         <div className="text-center text-gray-400">
                           <Mic className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p className="text-sm">Click Record to start voice transcription</p>
@@ -469,15 +469,15 @@ export default function ImageInfoModal({
             </div>
 
             {/* Modal Actions */}
-            <div className="p-6 pt-4 border-t border-gray-700">
+            <div className="p-6 pt-4 border-t border-white/20">
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 bg-gray-700 border border-gray-600 text-gray-300 hover:bg-gray-600 h-10 px-4 rounded-md font-medium transition-colors"
+                  className="flex-1 bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20 h-10 px-4 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
-                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-md font-medium transition-colors">
+                <button className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white h-10 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all duration-200">
                   Save Report
                 </button>
               </div>

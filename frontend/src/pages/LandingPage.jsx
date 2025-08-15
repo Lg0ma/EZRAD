@@ -142,11 +142,6 @@ const LandingPage = ({ onNavigate }) => {
                 <Wifi className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>{isLoading ? 'Creating Table...' : 'Test Database'}</span>
               </button>
-                <Users className={`w-5 h-5 ${isLoadingUsers ? 'animate-spin' : ''}`} />
-                <span>{isLoadingUsers ? 'Loading...' : 'Get Users'}</span>
-              <button className="border-2 border-blue-400 text-blue-400 px-6 py-4 rounded-lg text-lg font-semibold hover:bg-blue-400 hover:text-white transform hover:scale-105 transition-all duration-200">
-                System Requirements
-              </button>
             </div>
 
         {/*-------------------------------------------------------------------------------------------------------------*/}
