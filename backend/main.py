@@ -1,17 +1,29 @@
 """
 Main FastAPI application for EZRAD
-This file sets up the FastAPI app with the router configuration
+This file sets up the FastAPI app with the router configuration and manages
+the concurrent TCP socket server using the lifespan context manager.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import os
 import logging
 import time
 import asyncio
-from routes.socket_server import start_socket_server
+from dotenv import load_dotenv
+#load environment variables
+load_dotenv()
+
+# Import the TCP server start function
+# Assuming your socket server file is at routes/socket_server.py
+
+from routes.socket_server import start_server as start_socket_server
+
+
+
 # Import the router setup
 try:
     from router_setup import setup_routers, RouterConfig
@@ -24,13 +36,47 @@ except ImportError as e:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+# --- Lifespan Management for Concurrent Servers ---
+tcp_server_task = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manages the startup and shutdown of the application, including background tasks.
+    """
+    global tcp_server_task
+    logger.info("EZRAD API starting up...")
+    
+    # Start the TCP socket server as a background task
+    try:
+        loop = asyncio.get_running_loop()
+        tcp_server_task = loop.create_task(start_socket_server())
+        logger.info("TCP socket server task created and started in the background.")
+    except Exception as e:
+        logger.error(f"Failed to start TCP socket server: {e}")
+
+    yield  # The application is now running and handling requests
+
+    # --- Shutdown logic ---
+    logger.info("EZRAD API shutting down...")
+    if tcp_server_task and not tcp_server_task.done():
+        logger.info("Stopping TCP server...")
+        tcp_server_task.cancel()
+        try:
+            await tcp_server_task
+        except asyncio.CancelledError:
+            logger.info("TCP server task has been successfully cancelled.")
+
+
+# --- FastAPI App Initialization ---
+# Create FastAPI app and attach the lifespan manager
 app = FastAPI(
     title="EZRAD API",
     description="Radiology Management System API",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configure router settings
@@ -94,28 +140,7 @@ async def log_requests(request, call_next):
     
     return response
 
-@app.on_event("startup")
-async def startup_event():
-    """Run on application startup"""
-    logger.info("EZRAD API starting up...")
-    logger.info("Available routes:")
-    for route in app.routes:
-        if hasattr(route, 'methods') and hasattr(route, 'path'):
-            logger.info(f"  {list(route.methods)} {route.path}")
-
-    # Start socket server in background
-    try:
-        asyncio.create_task(start_socket_server())
-        logger.info("Socket server started in background")
-    except Exception as e:
-        logger.error(f"Failed to start socket server: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on application shutdown"""
-    logger.info("EZRAD API shutting down...")
-
+# Custom Exception Handlers
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 errors"""
@@ -127,11 +152,11 @@ async def internal_error_handler(request, exc):
     logger.error(f"Internal error: {exc}")
     return JSONResponse(status_code=500, content={"error": "Internal server error", "message": "Please try again later"})
 
+# Main execution block
 if __name__ == "__main__":
     import uvicorn
-    import time
     
-    # Run the application
+    # Run the application using uvicorn
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
