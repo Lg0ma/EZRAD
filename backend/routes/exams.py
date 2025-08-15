@@ -96,158 +96,6 @@ class ExamStatistics(BaseModel):
     week_exams: int
     month_exams: int
 
-# Main search endpoint with multiple parameters
-@router.get("/search", response_model=List[ExamResponse])
-async def search_exams(
-    exam_id: Optional[str] = Query(None, description="Search by exam ID"),
-    patient_name: Optional[str] = Query(None, description="Search by patient name (partial match)"),
-    patient_id: Optional[str] = Query(None, description="Search by patient ID"),
-    status: Optional[str] = Query(None, description="Filter by status (pending, in_progress, completed, cancelled)"),
-    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
-    time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
-    exam_type: Optional[str] = Query(None, description="Filter by exam type"),
-    body_part: Optional[str] = Query(None, description="Filter by body part"),
-    priority: Optional[str] = Query(None, description="Filter by priority (routine, urgent, stat)"),
-    technician_id: Optional[str] = Query(None, description="Filter by technician ID"),
-    doctor_id: Optional[str] = Query(None, description="Filter by doctor ID"),
-    sort_by: Optional[str] = Query("created_at", description="Sort by field"),
-    sort_order: Optional[str] = Query("desc", description="Sort order (asc or desc)"),
-    limit: Optional[int] = Query(100, description="Limit number of results"),
-    offset: Optional[int] = Query(0, description="Offset for pagination")
-):
-    """
-    Advanced search endpoint for exams with multiple filter options
-    """
-    try:
-        # Start building the query
-        query = supabase.table("exams").select("*")
-        
-        # Apply filters
-        if exam_id:
-            query = query.eq("id", exam_id)
-        
-        if patient_name:
-            # Case-insensitive partial match for patient name
-            query = query.ilike("patient_name", f"%{patient_name}%")
-        
-        if patient_id:
-            query = query.eq("patient_id", patient_id)
-        
-        if status:
-            query = query.eq("status", status.lower())
-        
-        if exam_type:
-            query = query.ilike("exam_type", f"%{exam_type}%")
-        
-        if body_part:
-            query = query.ilike("body_part", f"%{body_part}%")
-        
-        if priority:
-            query = query.eq("priority", priority.lower())
-        
-        if technician_id:
-            query = query.eq("technician_id", technician_id)
-        
-        if doctor_id:
-            query = query.eq("doctor_id", doctor_id)
-        
-        # Date range filter
-        if date_from:
-            datetime_from = f"{date_from} 00:00:00"
-            query = query.gte("scheduled_time", datetime_from)
-        
-        if date_to:
-            datetime_to = f"{date_to} 23:59:59"
-            query = query.lte("scheduled_time", datetime_to)
-        
-        # Time range filter (for scheduled_time within any date)
-        if time_from and time_to:
-            # This would require a custom SQL function in Supabase
-            # For now, we'll filter after fetching
-            pass
-        
-        # Apply sorting
-        if sort_order.lower() == "desc":
-            query = query.order(sort_by, desc=True)
-        else:
-            query = query.order(sort_by, desc=False)
-        
-        # Apply pagination
-        query = query.limit(limit).offset(offset)
-        
-        # Execute query
-        result = query.execute()
-        
-        # Additional filtering for time if needed
-        filtered_data = result.data
-        if time_from or time_to:
-            filtered_data = []
-            for exam in result.data:
-                if exam.get("scheduled_time"):
-                    exam_time = datetime.fromisoformat(exam["scheduled_time"]).time()
-                    
-                    if time_from and time_to:
-                        time_from_obj = datetime.strptime(time_from, "%H:%M").time()
-                        time_to_obj = datetime.strptime(time_to, "%H:%M").time()
-                        if time_from_obj <= exam_time <= time_to_obj:
-                            filtered_data.append(exam)
-                    elif time_from:
-                        time_from_obj = datetime.strptime(time_from, "%H:%M").time()
-                        if exam_time >= time_from_obj:
-                            filtered_data.append(exam)
-                    elif time_to:
-                        time_to_obj = datetime.strptime(time_to, "%H:%M").time()
-                        if exam_time <= time_to_obj:
-                            filtered_data.append(exam)
-                else:
-                    # Include exams without scheduled time if no time filter
-                    if not (time_from or time_to):
-                        filtered_data.append(exam)
-        
-        return filtered_data
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
-
-# Quick search endpoint (simplified)
-@router.get("/quick-search/{search_term}", response_model=List[ExamResponse])
-async def quick_search_exams(search_term: str):
-    """
-    Quick search across multiple fields
-    Searches in: exam ID, patient name, exam type, and description
-    """
-    try:
-        # Try to parse as integer for ID search
-        exams = []
-        
-        # Search by ID if search term is numeric
-        if search_term.isdigit():
-            id_result = supabase.table("exams").select("*").eq("id", int(search_term)).execute()
-            exams.extend(id_result.data)
-        
-        # Search by patient name
-        name_result = supabase.table("exams").select("*").ilike("patient_name", f"%{search_term}%").execute()
-        exams.extend(name_result.data)
-        
-        # Search by exam type
-        type_result = supabase.table("exams").select("*").ilike("exam_type", f"%{search_term}%").execute()
-        exams.extend(type_result.data)
-        
-        # Remove duplicates based on ID
-        seen_ids = set()
-        unique_exams = []
-        for exam in exams:
-            if exam['id'] not in seen_ids:
-                seen_ids.add(exam['id'])
-                unique_exams.append(exam)
-        
-        return unique_exams
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quick search error: {str(e)}")
-
 # Get today's exams
 @router.get("/today", response_model=List[ExamResponse])
 async def get_todays_exams():
@@ -507,15 +355,6 @@ async def get_exams_by_patient(patient_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.get("/patient-name/{patient_name}", response_model=List[ExamResponse])
-async def get_exams_by_patient_name(patient_name: str):
-    """Get all exams for a patient by name (partial match)"""
-    try:
-        result = supabase.table("exams").select("*").ilike("patient_name", f"%{patient_name}%").order("created_at", desc=True).execute()
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 @router.get("/technician/{technician_id}", response_model=List[ExamResponse])
 async def get_exams_by_technician(technician_id: str):
     """Get all exams by a specific technician"""
@@ -525,14 +364,6 @@ async def get_exams_by_technician(technician_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.get("/status/{status}", response_model=List[ExamResponse])
-async def get_exams_by_status(status: str):
-    """Get all exams with a specific status"""
-    try:
-        result = supabase.table("exams").select("*").eq("status", status.lower()).order("created_at", desc=True).execute()
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.patch("/{exam_id}/status")
 async def update_exam_status(exam_id: str, status: str):
@@ -568,32 +399,6 @@ async def get_exams_by_time_range(
         return result.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-# Batch operations
-@router.post("/batch-update-status")
-async def batch_update_exam_status(exam_ids: List[str], status: str):
-    """Update status for multiple exams at once"""
-    try:
-        update_data = {
-            "status": status.lower(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        if status.lower() == "completed":
-            update_data["completed_time"] = datetime.utcnow().isoformat()
-        
-        results = []
-        for exam_id in exam_ids:
-            result = supabase.table("exams").update(update_data).eq("id", exam_id).execute()
-            if result.data:
-                results.append(result.data[0])
-        
-        return {
-            "message": f"Updated {len(results)} exams to status: {status}",
-            "updated_exams": results
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Batch update error: {str(e)}")
 
 # Utility functions
 def get_exam_count():

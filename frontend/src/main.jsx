@@ -8,7 +8,7 @@ import Dashboard from './pages/Dashboard';
 import NewExamPage from './pages/NewExamPage';
 import CreateTech from './pages/CreateTech';
 import ImageUploadTestPage from './pages/ImageUploadTestPage';
-// import PatientPage from './pages/PatientsPage';
+import ImageInfoModal from './pages/ImageInfoModal'; // Import the modal here
 
 import './index.css';
 
@@ -16,8 +16,22 @@ const Main = () => {
   const [currentPage, setCurrentPage] = useState('home');
   const { isAuthenticated, user, login, logout } = useAuth();
 
+  // --- Modal state is now managed here ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedExamForModal, setSelectedExamForModal] = useState(null);
+
   const navigate = (page) => setCurrentPage(page);
 
+  // --- Functions to control the modal ---
+  const handleOpenModal = (exam) => {
+    setSelectedExamForModal(exam);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedExamForModal(null);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -26,12 +40,12 @@ const Main = () => {
 
       case 'login':
         return isAuthenticated
-          ? <Dashboard onNavigate={navigate} user={user} logout={logout} />
+          ? <Dashboard onNavigate={navigate} user={user} logout={logout} onOpenModal={handleOpenModal} />
           : <LoginPage onNavigate={navigate} login={login} />;
 
       case 'dashboard':
         return isAuthenticated
-          ? <Dashboard onNavigate={navigate} user={user} logout={logout} />
+          ? <Dashboard onNavigate={navigate} user={user} logout={logout} onOpenModal={handleOpenModal} />
           : <LoginPage onNavigate={navigate} login={login} />;
 
       case 'newExam':                       
@@ -47,17 +61,48 @@ const Main = () => {
           ? <ImageUploadTestPage onNavigate={navigate} />
           : <LoginPage onNavigate={navigate} login={login} />;
 
-      // case 'Patients':
-      //   return <PatientPage onNavigate={navigate} user={user} logout={logout} />
-
       default:
         return <LandingPage onNavigate={navigate} />;
     }
   };
+  
+  // Helper to format date for the modal
+  const formatDate = (datetime) => {
+    if (!datetime) return '';
+    try {
+      return new Date(datetime).toLocaleDateString();
+    } catch {
+      return '';
+    }
+  };
+  
+  // Helper to get technologist name for the modal
+  const getTechnologistName = (exam = {}) => {
+    return exam.technologist || exam.tech_name || exam.technologist_name || exam.tech || '';
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900">
       {renderPage()}
+
+      {/* --- Render the modal at the top level --- */}
+      {selectedExamForModal && (
+        <ImageInfoModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          patientName={selectedExamForModal.patient}
+          studyId={selectedExamForModal.id}
+          title={selectedExamForModal.exam}
+          modality={selectedExamForModal.rawData?.modality}
+          bodyPart={selectedExamForModal.rawData?.body_part}
+          status={selectedExamForModal.status}
+          studyDate={formatDate(selectedExamForModal.rawData?.scheduled_time || selectedExamForModal.rawData?.exam_date || selectedExamForModal.rawData?.created_at)}
+          studyTime={selectedExamForModal.time}
+          technologist={getTechnologistName(selectedExamForModal.rawData)}
+          imageUrl={selectedExamForModal.rawData?.image_url}
+        />
+      )}
     </div>
   );
 };

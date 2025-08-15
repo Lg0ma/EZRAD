@@ -136,51 +136,6 @@ async def get_tech(tech_id: str):  # Changed to str for UUID
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.get("/phone/{phone}", response_model=TechResponse)
-async def get_tech_by_phone(phone: str):
-    """Get a technician by phone number"""
-    try:
-        result = supabase.table("technicians").select("*").eq("phone", phone).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=404, detail="Technician not found")
-            
-        return result.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@router.put("/{tech_id}", response_model=TechResponse)
-async def update_tech(tech_id: str, tech_update: TechUpdate):  # Changed to str for UUID
-    """Update a technician's information"""
-    try:
-        # Validate UUID format
-        try:
-            uuid.UUID(tech_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid UUID format")
-            
-        update_data = {}
-        if tech_update.full_name is not None:
-            update_data["full_name"] = tech_update.full_name
-        if tech_update.office_name is not None:
-            update_data["office_name"] = tech_update.office_name
-        if tech_update.phone is not None:
-            update_data["phone"] = tech_update.phone
-            
-        if not update_data:
-            raise HTTPException(status_code=400, detail="No fields to update")
-            
-        result = supabase.table("technicians").update(update_data).eq("id", tech_id).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=404, detail="Technician not found")
-            
-        return result.data[0]
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 @router.delete("/{tech_id}")
 async def delete_tech(tech_id: str):  # Changed to str for UUID
     """Delete a technician from the database"""
@@ -202,15 +157,6 @@ async def delete_tech(tech_id: str):  # Changed to str for UUID
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.get("/office/{office_name}", response_model=List[TechResponse])
-async def get_techs_by_office(office_name: str):
-    """Get all technicians from a specific office"""
-    try:
-        result = supabase.table("technicians").select("*").eq("office_name", office_name).execute()
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 @router.get("/search/{name}", response_model=List[TechResponse])
 async def search_techs_by_name(name: str):
     """Search technicians by name (case-insensitive partial match)"""
@@ -220,37 +166,3 @@ async def search_techs_by_name(name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-# Utility functions
-def get_tech_count():
-    """Get total number of technicians"""
-    try:
-        result = supabase.table("technicians").select("id", count="exact").execute()
-        return result.count
-    except Exception as e:
-        print(f"Error getting technician count: {e}")
-        return 0
-
-def get_recent_techs(limit: int = 5):
-    """Get most recently created technicians"""
-    try:
-        result = (supabase.table("technicians")
-                 .select("*")
-                 .order("created_at", desc=True)
-                 .limit(limit)
-                 .execute())
-        return result.data
-    except Exception as e:
-        print(f"Error getting recent technicians: {e}")
-        return []
-
-def get_techs_by_office_count(office_name: str):
-    """Get count of technicians by office"""
-    try:
-        result = (supabase.table("technicians")
-                 .select("id", count="exact")
-                 .eq("office_name", office_name)
-                 .execute())
-        return result.count
-    except Exception as e:
-        print(f"Error getting technician count by office: {e}")
-        return 0

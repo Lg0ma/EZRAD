@@ -204,123 +204,6 @@ async def search_patients(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
-# Quick search endpoint (simplified)
-@router.get("/quick-search/{search_term}", response_model=List[PatientResponse])
-async def quick_search_patients(search_term: str):
-    """
-    Quick search across multiple fields
-    Searches in: patient ID, first name, last name, phone, email
-    """
-    try:
-        patients = []
-        
-        # Search by ID if search term is UUID-like
-        if '-' in search_term and len(search_term) > 30:
-            id_result = supabase.table("patients").select("*").eq("id", search_term).execute()
-            patients.extend(id_result.data)
-        
-        # Search by names
-        name_result = supabase.table("patients").select("*").or_(
-            f"first_name.ilike.%{search_term}%,last_name.ilike.%{search_term}%"
-        ).execute()
-        patients.extend(name_result.data)
-        
-        # Search by phone
-        phone_digits = re.sub(r'\D', '', search_term)
-        if phone_digits:
-            phone_result = supabase.table("patients").select("*").ilike("phone", f"%{phone_digits}%").execute()
-            patients.extend(phone_result.data)
-        
-        # Search by email
-        if '@' in search_term:
-            email_result = supabase.table("patients").select("*").ilike("email", f"%{search_term}%").execute()
-            patients.extend(email_result.data)
-        
-        # Remove duplicates based on ID
-        seen_ids = set()
-        unique_patients = []
-        for patient in patients:
-            if patient['id'] not in seen_ids:
-                seen_ids.add(patient['id'])
-                unique_patients.append(patient)
-        
-        return unique_patients
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quick search error: {str(e)}")
-
-# Get patient statistics
-@router.get("/statistics", response_model=PatientStatistics)
-async def get_patient_statistics():
-    """Get statistics about patients"""
-    try:
-        # Get all patients for counting
-        all_patients = supabase.table("patients").select("*").execute()
-        
-        total = len(all_patients.data)
-        
-        # Count by time period
-        now = datetime.now()
-        today = now.date()
-        week_ago = today - timedelta(days=7)
-        month_ago = today - timedelta(days=30)
-        
-        today_count = sum(1 for p in all_patients.data 
-                         if p.get("created_at") and 
-                         datetime.fromisoformat(p["created_at"]).date() == today)
-        
-        week_count = sum(1 for p in all_patients.data 
-                        if p.get("created_at") and 
-                        datetime.fromisoformat(p["created_at"]).date() >= week_ago)
-        
-        month_count = sum(1 for p in all_patients.data 
-                         if p.get("created_at") and 
-                         datetime.fromisoformat(p["created_at"]).date() >= month_ago)
-        
-        # Count by gender
-        gender_counts = {}
-        for patient in all_patients.data:
-            gender = patient.get("gender", "unknown")
-            gender_counts[gender] = gender_counts.get(gender, 0) + 1
-        
-        # Count with insurance
-        with_insurance = sum(1 for p in all_patients.data if p.get("insurance_provider"))
-        
-        # Calculate average age and age groups
-        ages = []
-        age_groups = {"0-18": 0, "19-35": 0, "36-50": 0, "51-65": 0, "65+": 0}
-        
-        for patient in all_patients.data:
-            if patient.get("date_of_birth"):
-                dob = datetime.strptime(patient["date_of_birth"], "%Y-%m-%d").date()
-                age = (today - dob).days // 365
-                ages.append(age)
-                
-                if age <= 18:
-                    age_groups["0-18"] += 1
-                elif age <= 35:
-                    age_groups["19-35"] += 1
-                elif age <= 50:
-                    age_groups["36-50"] += 1
-                elif age <= 65:
-                    age_groups["51-65"] += 1
-                else:
-                    age_groups["65+"] += 1
-        
-        avg_age = sum(ages) / len(ages) if ages else 0
-        
-        return PatientStatistics(
-            total_patients=total,
-            new_patients_today=today_count,
-            new_patients_week=week_count,
-            new_patients_month=month_count,
-            patients_by_gender=gender_counts,
-            patients_with_insurance=with_insurance,
-            average_age=round(avg_age, 1),
-            age_groups=age_groups
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Statistics error: {str(e)}")
 
 # Original CRUD operations
 @router.post("/", response_model=PatientResponse)
@@ -453,15 +336,6 @@ async def delete_patient(patient_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-# Get patients by insurance provider
-@router.get("/insurance/{provider}", response_model=List[PatientResponse])
-async def get_patients_by_insurance(provider: str):
-    """Get all patients with a specific insurance provider"""
-    try:
-        result = supabase.table("patients").select("*").ilike("insurance_provider", f"%{provider}%").order("last_name", desc=False).execute()
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 # Get patients by age range
 @router.get("/age-range/search", response_model=List[PatientResponse])
@@ -477,19 +351,6 @@ async def get_patients_by_age_range(
         min_dob = today - timedelta(days=(max_age + 1) * 365)
         
         result = supabase.table("patients").select("*").gte("date_of_birth", min_dob.isoformat()).lte("date_of_birth", max_dob.isoformat()).order("date_of_birth", desc=True).execute()
-        
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-# Get recent patients
-@router.get("/recent/list", response_model=List[PatientResponse])
-async def get_recent_patients(days: int = 7):
-    """Get patients created in the last N days"""
-    try:
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
-        
-        result = supabase.table("patients").select("*").gte("created_at", cutoff_date).order("created_at", desc=True).execute()
         
         return result.data
     except Exception as e:
@@ -524,95 +385,6 @@ async def get_patient_exam_history(patient_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-# Check for duplicate patients
-@router.post("/check-duplicate")
-async def check_duplicate_patient(
-    first_name: str = Query(..., description="Patient's first name"),
-    last_name: str = Query(..., description="Patient's last name"),
-    date_of_birth: str = Query(..., description="Patient's date of birth (YYYY-MM-DD)")
-):
-    """Check if a patient with the same name and DOB already exists"""
-    try:
-        result = supabase.table("patients").select("*").eq("first_name", first_name).eq("last_name", last_name).eq("date_of_birth", date_of_birth).execute()
-        
-        if result.data:
-            return {
-                "duplicate_found": True,
-                "patients": result.data,
-                "message": f"Found {len(result.data)} patient(s) with the same name and date of birth"
-            }
-        
-        return {
-            "duplicate_found": False,
-            "message": "No duplicate patients found"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-# Batch update insurance information
-@router.post("/batch-update-insurance")
-async def batch_update_insurance(
-    patient_ids: List[str],
-    insurance_provider: str,
-    policy_number: Optional[str] = None,
-    group_number: Optional[str] = None
-):
-    """Update insurance information for multiple patients at once"""
-    try:
-        update_data = {
-            "insurance_provider": insurance_provider
-        }
-        
-        if policy_number:
-            update_data["policy_number"] = policy_number
-        if group_number:
-            update_data["group_number"] = group_number
-        
-        results = []
-        for patient_id in patient_ids:
-            result = supabase.table("patients").update(update_data).eq("id", patient_id).execute()
-            if result.data:
-                results.append(result.data[0])
-        
-        return {
-            "message": f"Updated insurance for {len(results)} patients",
-            "updated_patients": results
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Batch update error: {str(e)}")
-
-# Export patients data (returns JSON, could be extended to CSV)
-@router.get("/export/data")
-async def export_patients_data(
-    format: str = Query("json", description="Export format (json or csv)"),
-    include_insurance: bool = Query(True, description="Include insurance information"),
-    include_address: bool = Query(True, description="Include address information")
-):
-    """Export patient data in specified format"""
-    try:
-        # Select fields based on parameters
-        fields = ["id", "first_name", "last_name", "date_of_birth", "gender", "phone", "email"]
-        
-        if include_insurance:
-            fields.extend(["insurance_provider", "policy_number", "group_number"])
-        
-        if include_address:
-            fields.extend(["address", "city", "state", "zip_code"])
-        
-        result = supabase.table("patients").select(",".join(fields)).order("last_name", desc=False).execute()
-        
-        if format == "json":
-            return {
-                "export_date": datetime.now().isoformat(),
-                "total_patients": len(result.data),
-                "patients": result.data
-            }
-        else:
-            # CSV format could be implemented here
-            raise HTTPException(status_code=501, detail="CSV export not yet implemented")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export error: {str(e)}")
 
 # Utility functions
 def calculate_age(date_of_birth: str) -> int:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ImageInfoModal from './ImageInfoModal';
+// ImageInfoModal is no longer imported here
 import { 
   Activity, 
   FileImage, 
@@ -14,17 +14,16 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-const Dashboard = ({ onNavigate, user, logout }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState(null);
-  const [allExams, setAllExams] = useState([]); // Store all fetched exams
-  const [todayExams, setTodayExams] = useState([]); // Today's exams specifically
-  const [displayExams, setDisplayExams] = useState([]); // Exams to display in the queue
+// Accept onOpenModal as a prop
+const Dashboard = ({ onNavigate, user, logout, onOpenModal }) => {
+  // Removed isModalOpen and selectedExam state
+  const [allExams, setAllExams] = useState([]);
+  const [todayExams, setTodayExams] = useState([]);
+  const [displayExams, setDisplayExams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   
-  // Statistics derived from fetched data
   const [statistics, setStatistics] = useState({
     totalToday: 0,
     pending: 0,
@@ -44,7 +43,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const currentDate = new Date().toLocaleDateString();
 
-  // Format time from datetime string
   const formatTime = (datetime) => {
     if (!datetime) return '--:--';
     try {
@@ -59,14 +57,12 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     }
   };
 
-  // Format exam ID
   const formatExamId = (id, createdAt) => {
     const year = new Date(createdAt || new Date()).getFullYear();
     const paddedId = String(id).padStart(3, '0');
     return `XR-${year}-${paddedId}`;
   };
 
-  // Map status from API to display format
   const formatStatus = (status) => {
     const statusMap = {
       'pending': 'Scheduled',
@@ -77,7 +73,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     return statusMap[status?.toLowerCase()] || status || 'Scheduled';
   };
 
-  // Check if an exam is today
   const isToday = (dateString) => {
     if (!dateString) return false;
     const examDate = new Date(dateString);
@@ -85,7 +80,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     return examDate.toDateString() === today.toDateString();
   };
 
-  // Check if an exam is upcoming (within next 24 hours)
   const isUpcoming = (dateString) => {
     if (!dateString) return false;
     const examDate = new Date(dateString);
@@ -94,20 +88,10 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     return examDate > now && examDate <= in24Hours;
   };
 
-  // Fetch patient information by ID
   const fetchPatientById = async (patientId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/patients/${patientId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch patient ${patientId}`);
-      }
-
+      const response = await fetch(`http://localhost:8000/api/v1/patients/${patientId}`);
+      if (!response.ok) throw new Error(`Failed to fetch patient ${patientId}`);
       const patientData = await response.json();
       return {
         id: patientData.id,
@@ -118,115 +102,44 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       };
     } catch (error) {
       console.error(`Error fetching patient ${patientId}:`, error);
-      return {
-        id: patientId,
-        name: 'Unknown Patient',
-        firstName: 'Unknown',
-        lastName: 'Patient',
-        fullData: null
-      };
+      return { id: patientId, name: 'Unknown Patient', fullData: null };
     }
   };
 
-  // Fetch multiple patients efficiently
   const fetchPatientsForExams = async (exams) => {
     const patientIds = [...new Set(exams.map(exam => exam.patient_id).filter(Boolean))];
-    
-    if (patientIds.length === 0) {
-      return {};
-    }
-
-    console.log(`Fetching patient data for ${patientIds.length} unique patients...`);
-    
-    // Fetch all patients concurrently
+    if (patientIds.length === 0) return {};
     const patientPromises = patientIds.map(id => fetchPatientById(id));
     const patients = await Promise.allSettled(patientPromises);
-    
-    // Create a map of patient_id -> patient data
     const patientMap = {};
     patients.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        patientMap[patientIds[index]] = result.value;
-      } else {
-        patientMap[patientIds[index]] = {
-          id: patientIds[index],
-          name: 'Unknown Patient',
-          firstName: 'Unknown',
-          lastName: 'Patient',
-          fullData: null
-        };
-      }
+      patientMap[patientIds[index]] = result.status === 'fulfilled' ? result.value : { id: patientIds[index], name: 'Unknown Patient', fullData: null };
     });
-
     return patientMap;
   };
 
-  // Calculate statistics from exam data
   const calculateStatistics = (exams) => {
-    const stats = {
-      totalToday: 0,
-      pending: 0,
-      inProgress: 0,
-      completed: 0,
-      cancelled: 0,
-      upcoming: 0,
-      averageTime: '12m',
-      operationalSystems: 3
-    };
-
+    const stats = { totalToday: 0, pending: 0, inProgress: 0, completed: 0, cancelled: 0, upcoming: 0, averageTime: '12m', operationalSystems: 3 };
     exams.forEach(exam => {
-      // Check date for today's exams
       const examDateField = exam.scheduled_time || exam.exam_date || exam.created_at;
-      if (isToday(examDateField)) {
-        stats.totalToday++;
-      }
-
-      // Count by status
+      if (isToday(examDateField)) stats.totalToday++;
       const status = exam.status?.toLowerCase() || 'pending';
       switch (status) {
         case 'pending':
           stats.pending++;
-          if (isUpcoming(examDateField)) {
-            stats.upcoming++;
-          }
+          if (isUpcoming(examDateField)) stats.upcoming++;
           break;
-        case 'in_progress':
-          stats.inProgress++;
-          break;
-        case 'completed':
-          stats.completed++;
-          break;
-        case 'cancelled':
-          stats.cancelled++;
-          break;
-        default:
-          stats.pending++; // Default to pending if status unknown
+        case 'in_progress': stats.inProgress++; break;
+        case 'completed': stats.completed++; break;
+        case 'cancelled': stats.cancelled++; break;
+        default: stats.pending++;
       }
     });
-
-    // Calculate average time if we have completed exams with time data
-    const completedWithTime = exams.filter(e => 
-      e.status === 'completed' && e.scheduled_time && e.completed_time
-    );
-    
-    if (completedWithTime.length > 0) {
-      const totalMinutes = completedWithTime.reduce((sum, exam) => {
-        const start = new Date(exam.scheduled_time);
-        const end = new Date(exam.completed_time);
-        const diffMinutes = Math.round((end - start) / 60000);
-        return sum + diffMinutes;
-      }, 0);
-      const avgMinutes = Math.round(totalMinutes / completedWithTime.length);
-      stats.averageTime = `${avgMinutes}m`;
-    }
-
     return stats;
   };
 
-  // Format exam for display with patient name
   const formatExamForDisplay = (exam, patientMap = {}) => {
     const patient = patientMap[exam.patient_id];
-    
     return {
       id: formatExamId(exam.id, exam.created_at),
       patient: patient ? patient.name : (exam.patient_name || 'Unknown Patient'),
@@ -238,153 +151,48 @@ const Dashboard = ({ onNavigate, user, logout }) => {
     };
   };
 
-  // Comprehensive fetch function
   const fetchExams = async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      console.log('Fetching exams...');
-      
-      // First, fetch ALL exams to get complete data
-      const allExamsResponse = await fetch('http://localhost:8000/api/v1/exams/?limit=100', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!allExamsResponse.ok) {
-        throw new Error('Failed to fetch exams');
-      }
-
+      const allExamsResponse = await fetch('http://localhost:8000/api/v1/exams/?limit=100');
+      if (!allExamsResponse.ok) throw new Error('Failed to fetch exams');
       const allExamsData = await allExamsResponse.json();
-      console.log(`Fetched ${allExamsData.length} exams`);
-      
       setAllExams(allExamsData);
-
-      // Filter today's exams
-      const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
-      
-      const todaysExams = allExamsData.filter(exam => {
-        const examDate = exam.scheduled_time || exam.exam_date || exam.created_at;
-        if (!examDate) return false;
-        
-        // Check if it's today
-        const examDateString = examDate.split('T')[0];
-        return examDateString === todayString;
-      });
-
+      const todayString = new Date().toISOString().split('T')[0];
+      const todaysExams = allExamsData.filter(exam => (exam.scheduled_time || exam.exam_date || exam.created_at)?.split('T')[0] === todayString);
       setTodayExams(todaysExams);
-
-      // Determine what to display in the queue
-      // If we have today's exams, show them; otherwise show recent exams
-      const examsToDisplay = todaysExams.length > 0 
-        ? todaysExams.slice(0, 4)
-        : allExamsData.slice(0, 4);
-
-      // Fetch patient data for the exams we're displaying
-      console.log('Fetching patient data for displayed exams...');
+      const examsToDisplay = (todaysExams.length > 0 ? todaysExams : allExamsData).slice(0, 4);
       const patientMap = await fetchPatientsForExams(examsToDisplay);
-
-      // Format exams for display with patient names
-      const formattedExams = examsToDisplay.map(exam => formatExamForDisplay(exam, patientMap));
-      setDisplayExams(formattedExams);
-
-      // Calculate all statistics from the fetched data
-      const stats = calculateStatistics(allExamsData);
-      setStatistics(stats);
-
+      setDisplayExams(examsToDisplay.map(exam => formatExamForDisplay(exam, patientMap)));
+      setStatistics(calculateStatistics(allExamsData));
       setLastRefresh(new Date());
-      
     } catch (err) {
       console.error('Error fetching exams:', err);
       setError('Failed to load exam data. Please check the connection.');
-      // Clear data on error to avoid showing stale information
       setDisplayExams([]);
-      setAllExams([]);
-      setTodayExams([]);
-      setStatistics({
-        totalToday: 0,
-        pending: 0,
-        inProgress: 0,
-        completed: 0,
-        cancelled: 0,
-        upcoming: 0,
-        averageTime: '0m',
-        operationalSystems: 3
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch data on component mount
   useEffect(() => {
     fetchExams();
-    
-    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchExams, 30000);
-    
     return () => clearInterval(interval);
   }, []);
 
-  // Handle opening modal with exam data
+  // This now calls the prop passed down from main.jsx
   const handleOpenModal = (exam) => {
-    setSelectedExam(exam);
-    setIsModalOpen(true);
+    onOpenModal(exam);
   };
 
-  // Format quick stats for display based on actual data
   const getQuickStats = () => [
-    { 
-      label: 'Today\'s Exams', 
-      value: String(statistics.totalToday), 
-      change: statistics.pending > 0 ? `${statistics.pending} pending` : 'All completed', 
-      icon: FileImage 
-    },
-    { 
-      label: 'Queue Status', 
-      value: String(statistics.pending), 
-      change: 'Pending studies', 
-      icon: Clock 
-    },
-    { 
-      label: 'Equipment Status', 
-      value: `${statistics.operationalSystems}/3`, 
-      change: 'All systems operational', 
-      icon: Monitor 
-    },
-    { 
-      label: 'Average Time', 
-      value: statistics.averageTime, 
-      change: 'Per examination', 
-      icon: Zap 
-    }
+    { label: 'Today\'s Exams', value: String(statistics.totalToday), change: statistics.pending > 0 ? `${statistics.pending} pending` : 'All completed', icon: FileImage },
+    { label: 'Queue Status', value: String(statistics.pending), change: 'Pending studies', icon: Clock },
+    { label: 'Equipment Status', value: `${statistics.operationalSystems}/3`, change: 'All systems operational', icon: Monitor },
+    { label: 'Average Time', value: statistics.averageTime, change: 'Per examination', icon: Zap }
   ];
-
-  // Helper: format date from datetime string (local date)
-  const formatDate = (datetime) => {
-    if (!datetime) return '';
-    try {
-      const date = new Date(datetime);
-      return date.toLocaleDateString();
-    } catch {
-      return '';
-    }
-  };
-
-  // Helper: best-effort technologist name extraction from exam data
-  const getTechnologistName = (exam = {}) => {
-    return (
-      exam.technologist ||
-      exam.tech_name ||
-      exam.technologist_name ||
-      exam.tech ||
-      ''
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -423,7 +231,7 @@ const Dashboard = ({ onNavigate, user, logout }) => {
       </nav>
 
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Quick Stats - Now using real data */}
+        {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {getQuickStats().map((stat, index) => (
             <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6">
@@ -545,30 +353,11 @@ const Dashboard = ({ onNavigate, user, logout }) => {
               </div>
             </div>
             
-            {selectedExam && (
-              <ImageInfoModal
-                isOpen={isModalOpen}
-                onClose={() => {
-                  setIsModalOpen(false);
-                  setSelectedExam(null);
-                }}
-                patientName={selectedExam.patient}
-                studyId={selectedExam.id}
-                title={selectedExam.exam}
-                modality={selectedExam.rawData?.modality}
-                bodyPart={selectedExam.rawData?.body_part}
-                status={selectedExam.status}
-                studyDate={formatDate(selectedExam.rawData?.scheduled_time || selectedExam.rawData?.exam_date || selectedExam.rawData?.created_at)}
-                studyTime={selectedExam.time}
-                technologist={getTechnologistName(selectedExam.rawData)}
-                imageUrl={selectedExam.rawData?.image_url}
-              />
-            )}
+            {/* The Modal is no longer rendered here */}
           </div>
 
           {/* Right Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
@@ -595,8 +384,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 </button>
               </div>
             </div>
-
-            {/* Equipment Status */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Equipment Status</h3>
@@ -622,8 +409,6 @@ const Dashboard = ({ onNavigate, user, logout }) => {
                 </div>
               </div>
             </div>
-
-            {/* Today's Summary - Now using real data */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">
