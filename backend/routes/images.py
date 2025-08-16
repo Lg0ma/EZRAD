@@ -27,15 +27,20 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Create router
 router = APIRouter()
 
-# Response model
+# Pydantic models
 class ExamImageResponse(BaseModel):
     id: str
     exam_id: str
     image_path: str
+    description: Optional[str] = None
     created_at: datetime
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
+
+class ImageDescriptionUpdate(BaseModel):
+    image_path: str
+    description: str
 
 
 @router.post("/", response_model=ExamImageResponse)
@@ -104,24 +109,51 @@ async def upload_exam_image(
 
 @router.get("/exams/{exam_id}/images", response_model=dict)
 def get_exam_images(exam_id: str):
-    """Retrieves signed URLs for all images associated with an exam"""
+    """Retrieves signed URLs and descriptions for all images associated with an exam"""
     try:
-        uuid.UUID(exam_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid UUID format for exam_id")
+        try:
+            uuid.UUID(exam_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid UUID format for exam_id")
 
-    query = supabase.table("exam_images").select("image_path").eq("exam_id", exam_id).execute()
+        # Fetch both image_path and description
+        query = supabase.table("exam_images").select("image_path, description").eq("exam_id", exam_id).execute()
 
-    if query.error:
-        raise HTTPException(status_code=400, detail=query.error.message)
+        images_data = []
+        if query.data:
+            image_paths = [item["image_path"] for item in query.data]
+            
+            # Get signed URLs for the image paths
+            signed_urls_response = supabase.storage.from_("exam-images").create_signed_urls(image_paths, 3600)
 
-    signed_urls = []
-    if query.data:
-        image_paths = [path["image_path"] for path in query.data]
-        
-        # This call returns a list of dicts, not a response object with .error
-        response_list = supabase.storage.from_("exam-images").create_signed_urls(image_paths, 3600)
-        
-        signed_urls = [item['signedURL'] for item in response_list if item and 'signedURL' in item]
+            # Create a map of image_path -> signed_url
+            url_map = {path: next((url.get('signedURL') for url in signed_urls_response if url.get('path') == path), None) for path in image_paths}
 
-    return {"exam_id": exam_id, "images": signed_urls}
+            # Combine the descriptions with the signed URLs
+            for item in query.data:
+                signed_url = url_map.get(item["image_path"])
+                if signed_url:
+                    images_data.append({
+                        "url": signed_url,
+                        "description": item.get("description", "")
+                    })
+
+        return {"exam_id": exam_id, "images": images_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching images: {str(e)}")
+
+
+@router.patch("/description", response_model=ExamImageResponse)
+async def update_image_description(update_data: ImageDescriptionUpdate):
+    """Update the description for a specific exam image."""
+    try:
+        result = supabase.table("exam_images").update({
+            "description": update_data.description
+        }).eq("image_path", update_data.image_path).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Image not found with the given path.")
+
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

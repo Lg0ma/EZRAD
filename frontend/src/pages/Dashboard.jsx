@@ -178,7 +178,7 @@ const Dashboard = ({ onNavigate, user, logout, onOpenModal }) => {
 
   useEffect(() => {
     fetchExams();
-    const interval = setInterval(fetchExams, 30000);
+    const interval = setInterval(fetchExams, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -190,7 +190,6 @@ const Dashboard = ({ onNavigate, user, logout, onOpenModal }) => {
   const getQuickStats = () => [
     { label: 'Today\'s Exams', value: String(statistics.totalToday), change: statistics.pending > 0 ? `${statistics.pending} pending` : 'All completed', icon: FileImage },
     { label: 'Queue Status', value: String(statistics.pending), change: 'Pending studies', icon: Clock },
-    { label: 'Equipment Status', value: `${statistics.operationalSystems}/3`, change: 'All systems operational', icon: Monitor },
     { label: 'Average Time', value: statistics.averageTime, change: 'Per examination', icon: Zap }
   ];
 

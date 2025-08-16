@@ -92,7 +92,7 @@ const Main = () => {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           patientName={selectedExamForModal.patient}
-          studyId={selectedExamForModal.id}
+          studyId={selectedExamForModal.rawData.id}
           title={selectedExamForModal.exam}
           modality={selectedExamForModal.rawData?.modality}
           bodyPart={selectedExamForModal.rawData?.body_part}
