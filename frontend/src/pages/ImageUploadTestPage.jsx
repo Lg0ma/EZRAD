@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { 
-  Upload, 
-  Image, 
-  FileImage, 
-  CheckCircle, 
-  AlertCircle, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Upload,
+  Image,
+  FileImage,
+  CheckCircle,
+  AlertCircle,
   X,
   Loader,
   Camera,
@@ -14,12 +14,33 @@ import {
 
 const ImageUploadTestPage = ({ onNavigate }) => {
   const [examId, setExamId] = useState('');
+  const [examsList, setExamsList] = useState([]);
+  const [isLoadingExams, setIsLoadingExams] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadedImageInfo, setUploadedImageInfo] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/exams/?limit=100');
+        if (response.ok) {
+          const data = await response.json();
+          setExamsList(data);
+        } else {
+          console.error("Failed to fetch exams");
+        }
+      } catch (error) {
+        console.error("Error fetching exams:", error);
+      } finally {
+        setIsLoadingExams(false);
+      }
+    };
+    fetchExams();
+  }, []);
 
   // Handle file selection
   const handleFileSelect = (event) => {
@@ -28,7 +49,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/dicom'];
       const fileExtension = file.name.split('.').pop().toLowerCase();
-      
+
       if (!validTypes.includes(file.type) && !['dcm', 'dicom'].includes(fileExtension)) {
         setUploadStatus('error');
         setUploadMessage('Please select a valid image file (JPEG, PNG, GIF, BMP, or DICOM)');
@@ -69,7 +90,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       const event = { target: { files: [files[0]] } };
@@ -92,9 +113,9 @@ const ImageUploadTestPage = ({ onNavigate }) => {
   // Handle upload
   const handleUpload = async () => {
     // Validate inputs
-    if (!examId.trim()) {
+    if (!examId) {
       setUploadStatus('error');
-      setUploadMessage('Please enter an Exam ID');
+      setUploadMessage('Please select an Exam');
       return;
     }
 
@@ -106,7 +127,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
 
     // Create FormData
     const formData = new FormData();
-    formData.append('exam_id', examId.trim());
+    formData.append('exam_id', examId);
     formData.append('file', selectedFile);
 
     setUploadStatus('uploading');
@@ -124,7 +145,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
         setUploadStatus('success');
         setUploadMessage('Image uploaded successfully!');
         setUploadedImageInfo(data);
-        
+
         // Clear form after successful upload
         setTimeout(() => {
           clearFile();
@@ -155,14 +176,14 @@ const ImageUploadTestPage = ({ onNavigate }) => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <button 
+          <button
             onClick={() => onNavigate('dashboard')}
             className="inline-flex items-center text-slate-400 hover:text-white mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </button>
-          
+
           <div className="flex items-center space-x-3">
             <div className="bg-blue-600 p-3 rounded-lg">
               <Camera className="w-8 h-8 text-white" />
@@ -179,17 +200,23 @@ const ImageUploadTestPage = ({ onNavigate }) => {
           {/* Exam ID Input */}
           <div className="mb-6">
             <label className="block text-white text-sm font-medium mb-2">
-              Exam ID *
+              Select Exam *
             </label>
-            <input
-              type="text"
+            <select
               value={examId}
               onChange={(e) => setExamId(e.target.value)}
-              placeholder="Enter exam ID (e.g., 550e8400-e29b-41d4-a716-446655440000)"
+              disabled={isLoadingExams}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            >
+              <option value="">{isLoadingExams ? 'Loading exams...' : 'Select an exam'}</option>
+              {!isLoadingExams && examsList.map(exam => (
+                <option key={exam.id} value={exam.id}>
+                  {exam.exam_type} for {exam.patient_name || 'N/A'} (ID: {exam.id.substring(0, 8)})
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-slate-400 mt-1">
-              Enter the UUID of the exam to attach this image to
+              Choose the exam to which this image should be attached.
             </p>
           </div>
 
@@ -198,7 +225,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
             <label className="block text-white text-sm font-medium mb-2">
               Select Image *
             </label>
-            
+
             {!selectedFile ? (
               <div
                 onDragOver={handleDragOver}
@@ -219,9 +246,9 @@ const ImageUploadTestPage = ({ onNavigate }) => {
                 <div className="flex items-start space-x-4">
                   {previewUrl ? (
                     <div className="flex-shrink-0">
-                      <img 
-                        src={previewUrl} 
-                        alt="Preview" 
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
                         className="w-24 h-24 object-cover rounded-lg border border-white/20"
                       />
                     </div>
@@ -230,7 +257,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
                       <FileImage className="w-12 h-12 text-white/50" />
                     </div>
                   )}
-                  
+
                   <div className="flex-1">
                     <p className="text-white font-medium">{selectedFile.name}</p>
                     <p className="text-sm text-slate-400">
@@ -250,7 +277,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
                 </div>
               </div>
             )}
-            
+
             <input
               ref={fileInputRef}
               type="file"
@@ -284,7 +311,7 @@ const ImageUploadTestPage = ({ onNavigate }) => {
                 }`}>
                   {uploadMessage}
                 </p>
-                
+
                 {uploadedImageInfo && uploadStatus === 'success' && (
                   <div className="mt-2 text-sm text-slate-300">
                     <p>Image ID: {uploadedImageInfo.id}</p>
@@ -334,22 +361,22 @@ const ImageUploadTestPage = ({ onNavigate }) => {
           <ul className="space-y-2 text-sm text-slate-300">
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">1.</span>
-              Enter the UUID of an existing exam in the Exam ID field
+              Select an exam from the dropdown list.
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">2.</span>
-              Select an image file by clicking the upload area or dragging a file
+              Select an image file by clicking the upload area or dragging a file.
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">3.</span>
-              Supported formats: JPEG, PNG, GIF, BMP, DICOM (Max 10MB)
+              Supported formats: JPEG, PNG, GIF, BMP, DICOM (Max 10MB).
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">4.</span>
-              Click "Upload Image" to attach the image to the exam record
+              Click "Upload Image" to attach the image to the selected exam record.
             </li>
           </ul>
-          
+
           <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
             <p className="text-xs text-yellow-300">
               <strong>Note:</strong> This is a test page. In production, image uploads would typically be integrated into the exam workflow.
