@@ -26,6 +26,20 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Create router
 router = APIRouter()
 
+# --- Helpers ---------------------------------------------------------------
+def normalize_gender_for_db(value: str) -> str:
+    """Normalize incoming gender values to the canonical DB values."""
+    key = (value or "").strip().lower()
+    mapping = {
+        "male": "Male",
+        "m": "Male",
+        "female": "Female",
+        "f": "Female",
+    }
+    if key not in mapping:
+        raise ValueError("Gender must be 'Male' or 'Female'")
+    return mapping[key]
+
 # Pydantic models
 class PatientCreate(BaseModel):
     first_name: str
@@ -43,12 +57,10 @@ class PatientCreate(BaseModel):
     group_number: Optional[str] = None
     created_by: Optional[str] = None  # UUID of the user creating the patient
     
+
     @validator('gender')
     def validate_gender(cls, v):
-        valid_genders = ['male', 'female', 'other', 'prefer_not_to_say']
-        if v.lower() not in valid_genders:
-            raise ValueError(f'Gender must be one of: {", ".join(valid_genders)}')
-        return v.lower()
+        return normalize_gender_for_db(v)
     
     @validator('email')
     def validate_email(cls, v):
@@ -176,7 +188,7 @@ async def search_patients(
             query = query.eq("date_of_birth", date_of_birth)
         
         if gender:
-            query = query.eq("gender", gender.lower())
+            query = query.eq("gender", normalize_gender_for_db(gender))
         
         if insurance_provider:
             query = query.ilike("insurance_provider", f"%{insurance_provider}%")
@@ -214,7 +226,7 @@ async def create_patient(patient: PatientCreate):
             "first_name": patient.first_name,
             "last_name": patient.last_name,
             "date_of_birth": patient.date_of_birth.isoformat(),
-            "gender": patient.gender,
+            "gender": normalize_gender_for_db(patient.gender),
             "phone": patient.phone,
             "email": patient.email,
             "address": patient.address,
@@ -280,7 +292,7 @@ async def update_patient(patient_id: str, patient_update: PatientUpdate):
         if patient_update.date_of_birth is not None:
             update_data["date_of_birth"] = patient_update.date_of_birth.isoformat()
         if patient_update.gender is not None:
-            update_data["gender"] = patient_update.gender.lower()
+            update_data["gender"] = normalize_gender_for_db(patient_update.gender)
         if patient_update.phone is not None:
             update_data["phone"] = patient_update.phone
         if patient_update.email is not None:

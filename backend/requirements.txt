@@ -5,6 +5,7 @@ python-multipart
 
 # Database and Supabase
 supabase
+
 python-dotenv
 
 # Validation and serialization

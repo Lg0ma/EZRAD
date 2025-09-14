@@ -375,7 +375,7 @@ const Dashboard = ({ onNavigate, user, logout, onOpenModal }) => {
                 </button>
                 <button className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium">
                   <Monitor className="w-4 h-4 mr-2" />
-                  Equipment Check
+                  Patient Search
                 </button>
                 <button className="w-full flex items-center justify-center px-4 py-3 bg-white/10 text-slate-300 rounded-xl hover:bg-white/20 hover:text-white transition-all duration-200 font-medium">
                   <Settings className="w-4 h-4 mr-2" />
@@ -385,7 +385,7 @@ const Dashboard = ({ onNavigate, user, logout, onOpenModal }) => {
             </div>
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
               <div className="px-6 py-4 border-b border-white/20">
-                <h3 className="text-lg font-semibold text-white">Equipment Status</h3>
+                <h3 className="text-lg font-semibold text-white">Patient Search</h3>
               </div>
               <div className="p-6 space-y-3">
                 <div className="flex items-center justify-between">

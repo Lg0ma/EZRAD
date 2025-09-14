@@ -26,16 +26,50 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 router = APIRouter()
 
 # Pydantic models
+# --- models ---
 class ExamCreate(BaseModel):
-    patient_name: str
-    patient_id: Optional[str] = None
+    patient_id: str
     exam_type: str
-    description: Optional[str] = None
-    technician_id: str
-    doctor_id: Optional[str] = None
-    scheduled_time: Optional[datetime] = None
     body_part: Optional[str] = None
-    priority: Optional[str] = "routine"  # routine, urgent, stat
+    ordering_physician: Optional[str] = None
+    clinical_history: Optional[str] = None
+    exam_date: date
+    exam_time: time
+    room: Optional[str] = None
+    created_by: str
+    technician_id: Optional[str] = None
+    priority: Optional[str] = "routine"  # routine | urgent | stat
+    contrast: bool = False
+    pregnancy: bool = False
+    implants: bool = False
+
+class ExamResponse(BaseModel):
+    id: str
+    patient_id: str
+    exam_type: str
+    body_part: Optional[str] = None
+    ordering_physician: Optional[str] = None
+    clinical_history: Optional[str] = None
+    exam_date: Optional[str] = None
+    exam_time: Optional[str] = None
+    room: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: Optional[str] = None
+    priority: Optional[str] = None
+    contrast: Optional[bool] = None
+    pregnancy: Optional[bool] = None
+    implants: Optional[bool] = None
+
+# class ExamCreate(BaseModel):
+#     patient_name: str
+#     patient_id: Optional[str] = None
+#     exam_type: str
+#     description: Optional[str] = None
+#     technician_id: str
+#     doctor_id: Optional[str] = None
+#     scheduled_time: Optional[datetime] = None
+#     body_part: Optional[str] = None
+#     priority: Optional[str] = "routine"  # routine, urgent, stat
 
 class ExamUpdate(BaseModel):
     patient_name: Optional[str] = None
@@ -49,25 +83,25 @@ class ExamUpdate(BaseModel):
     priority: Optional[str] = None
     notes: Optional[str] = None
 
-class ExamResponse(BaseModel):
-    id: str
-    patient_name: Optional[str] = None
-    patient_id: Optional[str] = None
-    exam_type: str
-    description: Optional[str] = None
-    status: Optional[str] = None
-    technician_id: Optional[str] = None
-    doctor_id: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    scheduled_time: Optional[str] = None
-    completed_time: Optional[str] = None
-    body_part: Optional[str] = None
-    priority: Optional[str] = None
-    notes: Optional[str] = None
-    # Include alternate scheduling fields present in DB
-    exam_date: Optional[str] = None
-    exam_time: Optional[str] = None
+# class ExamResponse(BaseModel):
+#     id: str
+#     patient_name: Optional[str] = None
+#     patient_id: Optional[str] = None
+#     exam_type: str
+#     description: Optional[str] = None
+#     status: Optional[str] = None
+#     technician_id: Optional[str] = None
+#     doctor_id: Optional[str] = None
+#     created_at: Optional[str] = None
+#     updated_at: Optional[str] = None
+#     scheduled_time: Optional[str] = None
+#     completed_time: Optional[str] = None
+#     body_part: Optional[str] = None
+#     priority: Optional[str] = None
+#     notes: Optional[str] = None
+#     # Include alternate scheduling fields present in DB
+#     exam_date: Optional[str] = None
+#     exam_time: Optional[str] = None
 
 class ExamSearchParams(BaseModel):
     """Parameters for searching exams"""
@@ -212,29 +246,40 @@ async def get_exam_statistics():
 async def create_exam(exam: ExamCreate):
     """Create a new exam"""
     try:
+        # Build payload matching the new ExamCreate schema
         exam_data = {
-            "patient_name": exam.patient_name,
             "patient_id": exam.patient_id,
             "exam_type": exam.exam_type,
-            "description": exam.description,
+            "body_part": exam.body_part,
+            "ordering_physician": exam.ordering_physician,
+            "clinical_history": exam.clinical_history,
+            "exam_date": exam.exam_date.isoformat(),
+            "exam_time": exam.exam_time.isoformat(),
+            "room": exam.room,
+            "created_by": exam.created_by,
             "technician_id": exam.technician_id,
-            "doctor_id": exam.doctor_id,
+            "priority": exam.priority or "routine",
+            "contrast": exam.contrast,
+            "pregnancy": exam.pregnancy,
+            "implants": exam.implants,
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
-            "body_part": exam.body_part,
-            "priority": exam.priority or "routine"
         }
-        
-        if exam.scheduled_time:
-            exam_data["scheduled_time"] = exam.scheduled_time.isoformat()
-        
+
+        # Derive a combined scheduled_time for convenience/queries
+        try:
+            scheduled_dt = datetime.combine(exam.exam_date, exam.exam_time)
+            exam_data["scheduled_time"] = scheduled_dt.isoformat()
+        except Exception:
+            pass
+
         result = supabase.table("exams").insert(exam_data).execute()
-        
+
         if result.data:
             return result.data[0]
         else:
             raise HTTPException(status_code=400, detail="Failed to create exam")
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 

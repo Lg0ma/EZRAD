@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// import { supabase } from '../supabaseClient';
 import { 
   Activity, 
   FileImage, 
@@ -11,16 +10,37 @@ import {
   Search,
   User,
   Phone,
-
   Clock,
   MapPin,
   AlertCircle,
   Check,
-  X
+  X,
+  Loader
 } from 'lucide-react';
+
+// Normalize API error payloads (FastAPI/Validation/Custom)
+function formatApiError(data) {
+  if (!data) return 'Unknown error';
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map(e => {
+        const path = Array.isArray(e.loc) ? e.loc.join('.') : (e.loc || 'field');
+        return `${path}: ${e.msg}`;
+      })
+      .join('; ');
+  }
+  if (typeof data.detail === 'string') return data.detail;
+  if (typeof data.message === 'string') return data.message;
+  if (data.error && typeof data.error === 'string') return data.error;
+  try { return JSON.stringify(data); } catch { return 'Unparseable error'; }
+}
 
 const NewExamPage = ({ onNavigate, user, logout }) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
   const [patientData, setPatientData] = useState({
     // Patient Demographics
     firstName: '',
@@ -58,6 +78,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
 
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -71,6 +92,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
     }));
   };
 
+  // Real patient search using your backend API
   const handlePatientSearch = async (searchTerm) => {
     if (searchTerm.length < 3) {
       setSearchResults([]);
@@ -78,46 +100,216 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
     }
 
     setIsSearching(true);
-    // Simulate search delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock search results
-    const mockResults = [
-      {
-        id: 'P001',
-        firstName: 'John',
-        lastName: 'Smith',
-        dateOfBirth: '1985-03-15',
-        phone: '(555) 123-4567',
-        lastExam: '2024-01-15'
-      },
-      {
-        id: 'P002',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        dateOfBirth: '1990-07-22',
-        phone: '(555) 987-6543',
-        lastExam: '2023-12-10'
+    try {
+      // Use your patients search endpoint
+      const response = await fetch(`http://localhost:8000/api/v1/patients/search?full_name=${encodeURIComponent(searchTerm)}&limit=10`);
+      
+      if (response.ok) {
+        const patients = await response.json();
+        setSearchResults(patients);
+      } else {
+        console.error('Failed to search patients');
+        setSearchResults([]);
       }
-    ];
-    
-    setSearchResults(mockResults.filter(patient => 
-      `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.phone.includes(searchTerm)
-    ));
-    setIsSearching(false);
+    } catch (error) {
+      console.error('Error searching patients:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const selectExistingPatient = (patient) => {
+  // Select existing patient and populate form
+  const selectExistingPatient = async (patient) => {
+    setSelectedPatientId(patient.id);
+    
+    // Populate form with existing patient data
     setPatientData(prev => ({
       ...prev,
-      firstName: patient.firstName,
-      lastName: patient.lastName,
-      dateOfBirth: patient.dateOfBirth,
-      phone: patient.phone
+      firstName: patient.first_name,
+      lastName: patient.last_name,
+      dateOfBirth: patient.date_of_birth,
+      gender: patient.gender,
+      phone: patient.phone,
+      email: patient.email || '',
+      address: patient.address || '',
+      city: patient.city || '',
+      state: patient.state || '',
+      zipCode: patient.zip_code || '',
+      insuranceProvider: patient.insurance_provider || '',
+      policyNumber: patient.policy_number || '',
+      groupNumber: patient.group_number || ''
     }));
+    
     setSearchResults([]);
-    setCurrentStep(2);
+    setCurrentStep(2); // Move to exam details step
+  };
+
+  const capitalizeGender = (gender) => {
+    if (typeof gender === 'string' && gender.length > 0) {
+      return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+    }
+    return gender;
+  };
+  
+  const createPatient = async () => {
+    try {
+      const patientPayload = {
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth,
+        // FIX: This line now capitalizes the gender before sending
+        gender: capitalizeGender(patientData.gender),
+        phone: patientData.phone,
+        email: patientData.email || null,
+        address: patientData.address || null,
+        city: patientData.city || null,
+        state: patientData.state || null,
+        zip_code: patientData.zipCode || null,
+        insurance_provider: patientData.insuranceProvider || null,
+        policy_number: patientData.policyNumber || null,
+        group_number: patientData.groupNumber || null,
+        created_by: user?.id || null
+      };
+
+      const response = await fetch('http://localhost:8000/api/v1/patients/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patientPayload)
+      });
+
+      if (!response.ok) {
+        let errorData = null;
+        try { errorData = await response.json(); } catch {}
+        const msg = formatApiError(errorData) || `${response.status} ${response.statusText}`;
+        throw new Error(msg);
+      }
+
+      const newPatient = await response.json();
+      return newPatient.id;
+      
+    } catch (error) {
+      throw new Error(`Failed to create patient: ${error.message || error}`);
+    }
+  };
+    
+  // Create exam using your backend API
+  const createExam = async (patientId) => {
+    try {
+      // Combine exam date and time for scheduled_time
+      let scheduledTime = null;
+      if (patientData.examDate && patientData.examTime) {
+        scheduledTime = `${patientData.examDate}T${patientData.examTime}:00`;
+      }
+
+      const examPayload = {
+        // Patient linkage
+        patient_name: `${patientData.firstName} ${patientData.lastName}`,
+        patient_id: patientId,
+
+        // Core exam info
+        exam_type: patientData.examType,
+        body_part: patientData.bodyPart,
+        priority: patientData.priority,
+
+        // Clinical text
+        description: patientData.clinicalHistory || `${patientData.examType} examination`,
+
+        // Scheduling — send both split fields (required by backend) and combined for compatibility
+        exam_date: patientData.examDate,           // e.g., "2025-09-14"
+        exam_time: patientData.examTime,           // e.g., "14:30"
+        scheduled_time: scheduledTime,             // keep if backend still supports it
+
+        // Personnel
+        technician_id: user?.id || user?.techId || null,
+        doctor_id: null,                           // until you wire UUIDs
+        ordering_physician_name: patientData.orderingPhysician || null,
+        created_by: user?.id || user?.techId || null,
+
+        // Notes
+        notes: [
+          patientData.specialInstructions,
+          patientData.contrast ? 'Contrast required' : null,
+          patientData.pregnancy ? 'Possible pregnancy - use precautions' : null,
+          patientData.implants ? 'Patient has metal implants/devices' : null
+        ].filter(Boolean).join('; ') || null,
+
+        // Optional room/equipment
+        room: patientData.room || null,
+      };
+      
+      const response = await fetch('http://localhost:8000/api/v1/exams/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(examPayload)
+      });
+
+      if (!response.ok) {
+        let errorData = null;
+        try { errorData = await response.json(); } catch {}
+        const msg = formatApiError(errorData) || `${response.status} ${response.statusText}`;
+        throw new Error(msg);
+      }
+
+      const newExam = await response.json();
+      return newExam;
+      
+    } catch (error) {
+      throw new Error(`Failed to create exam: ${error.message || error}`);
+    }
+  };
+
+  // Main submit handler
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      let patientId = selectedPatientId;
+      
+      // If no existing patient selected, create new patient
+      if (!patientId) {
+        patientId = await createPatient();
+      }
+      
+      // Create the exam
+      const newExam = await createExam(patientId);
+      
+      setSuccess(`Exam scheduled successfully! Exam ID: ${newExam.id}`);
+      
+      // Wait a moment to show success message, then navigate
+      setTimeout(() => {
+        onNavigate('dashboard');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Submit error (raw):', error);
+      setError(error.message || String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Validation for each step
+  const canProceedToStep2 = () => {
+    return patientData.firstName && 
+           patientData.lastName && 
+           patientData.dateOfBirth && 
+           patientData.gender && 
+           patientData.phone;
+  };
+
+  const canProceedToStep3 = () => {
+    return patientData.examType && 
+           patientData.bodyPart && 
+           patientData.orderingPhysician && 
+           patientData.examDate && 
+           patientData.examTime;
   };
 
   const examTypes = [
@@ -151,48 +343,6 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
   const currentTime = new Date().toLocaleTimeString();
   const currentDate = new Date().toLocaleDateString();
 
-  const handleSubmit = async () => {
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      alert('Authentication error. Please log in again.');
-      return;
-    }
-
-    const { data: patientInsert, error: patientError } = await supabase
-      .from('patients')
-      .insert({
-        first_name: patientData.firstName,
-        last_name: patientData.lastName,
-        date_of_birth: patientData.dateOfBirth,
-        gender: patientData.gender,
-        phone: patientData.phone,
-        email: patientData.email,
-        address: patientData.address,
-        city: patientData.city,
-        state: patientData.state,
-        zip_code: patientData.zipCode,
-        insurance_provider: patientData.insuranceProvider,
-        policy_number: patientData.policyNumber,
-        group_number: patientData.groupNumber,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (patientError) {
-      alert('Failed to add patient: ' + patientError.message);
-      return;
-    }
-
-    console.log('Patient inserted:', patientInsert);
-    alert('New exam scheduled successfully!');
-    onNavigate('dashboard');
-  };
-
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -209,10 +359,15 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             onChange={(e) => handlePatientSearch(e.target.value)}
           />
+          {isSearching && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader className="w-5 h-5 text-gray-400 animate-spin" />
+            </div>
+          )}
         </div>
         
         {searchResults.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {searchResults.map((patient) => (
               <div
                 key={patient.id}
@@ -221,12 +376,13 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium text-gray-900">{patient.firstName} {patient.lastName}</p>
-                    <p className="text-sm text-gray-500">DOB: {patient.dateOfBirth}</p>
+                    <p className="font-medium text-gray-900">{patient.first_name} {patient.last_name}</p>
+                    <p className="text-sm text-gray-500">DOB: {patient.date_of_birth}</p>
                     <p className="text-sm text-gray-500">{patient.phone}</p>
+                    {patient.email && <p className="text-sm text-gray-500">{patient.email}</p>}
                   </div>
                   <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                    Last exam: {patient.lastExam}
+                    ID: {patient.id.substring(0, 8)}...
                   </span>
                 </div>
               </div>
@@ -245,7 +401,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               value={patientData.firstName}
               onChange={(e) => handleInputChange('firstName', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-             required
+              required
             />
           </div>
           <div>
@@ -273,13 +429,13 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <select
               value={patientData.gender}
               onChange={(e) => handleInputChange('gender', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="">Select Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
             </select>
           </div>
           <div>
@@ -288,7 +444,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="tel"
               value={patientData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="(555) 123-4567"
               required
             />
@@ -299,8 +455,43 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               type="email"
               value={patientData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+        </div>
+        
+        {/* Optional Insurance Section */}
+        <div className="mt-6">
+          <h4 className="text-md font-semibold text-gray-900 mb-3">Insurance Information (Optional)</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Provider</label>
+              <input
+                type="text"
+                value={patientData.insuranceProvider}
+                onChange={(e) => handleInputChange('insuranceProvider', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Blue Cross Blue Shield"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Policy Number</label>
+              <input
+                type="text"
+                value={patientData.policyNumber}
+                onChange={(e) => handleInputChange('policyNumber', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Group Number</label>
+              <input
+                type="text"
+                value={patientData.groupNumber}
+                onChange={(e) => handleInputChange('groupNumber', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -320,7 +511,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <select
             value={patientData.examType}
             onChange={(e) => handleInputChange('examType', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
             <option value="">Select Exam Type</option>
@@ -379,6 +570,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             type="date"
             value={patientData.examDate}
             onChange={(e) => handleInputChange('examDate', e.target.value)}
+            min={new Date().toISOString().split('T')[0]} // Prevent past dates
             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           />
@@ -474,6 +666,10 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <p><span className="font-medium">DOB:</span> {patientData.dateOfBirth}</p>
             <p><span className="font-medium">Gender:</span> {patientData.gender}</p>
             <p><span className="font-medium">Phone:</span> {patientData.phone}</p>
+            {patientData.email && <p><span className="font-medium">Email:</span> {patientData.email}</p>}
+            {selectedPatientId && (
+              <p className="text-green-600"><span className="font-medium">Status:</span> Existing Patient</p>
+            )}
           </div>
         </div>
 
@@ -498,7 +694,8 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <div className="space-y-2 text-sm">
             <p><span className="font-medium">Date:</span> {patientData.examDate}</p>
             <p><span className="font-medium">Time:</span> {patientData.examTime}</p>
-            <p><span className="font-medium">Room:</span> {patientData.room}</p>
+            {patientData.room && <p><span className="font-medium">Room:</span> {patientData.room}</p>}
+            <p><span className="font-medium">Technician:</span> {user?.name || 'Current User'}</p>
           </div>
         </div>
 
@@ -521,6 +718,25 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <p className="text-sm text-gray-700">{patientData.clinicalHistory}</p>
         </div>
       )}
+
+      {/* Error and Success Messages */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <Check className="w-5 h-5 text-green-400 mr-2" />
+            <p className="text-green-700">{success}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -538,8 +754,8 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Dashboard</span>
               </button>
-              <div className="h-6 w-px mx-2"></div>
-              <div className="bg-blue-600 p-2 rounded-lg bg-gray-50">
+              <div className="h-6 w-px bg-gray-300 mx-2"></div>
+              <div className="bg-blue-600 p-2 rounded-lg">
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -606,7 +822,7 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
           <div className="flex justify-between items-center pt-6 mt-6 border-t border-gray-200">
             <button
               onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isLoading}
               className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -616,14 +832,20 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
             <div className="flex space-x-3">
               <button
                 onClick={() => onNavigate('dashboard')}
-                className="px-6 py-2 border text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={isLoading}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               {currentStep < 3 ? (
                 <button
                   onClick={() => setCurrentStep(currentStep + 1)}
-                  className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={
+                    isLoading || 
+                    (currentStep === 1 && !canProceedToStep2()) || 
+                    (currentStep === 2 && !canProceedToStep3())
+                  }
+                  className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Next</span>
                   <ArrowLeft className="w-4 h-4 rotate-180" />
@@ -631,10 +853,20 @@ const NewExamPage = ({ onNavigate, user, logout }) => {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isLoading}
+                  className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Schedule Exam</span>
+                  {isLoading ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      <span>Scheduling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Schedule Exam</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>
