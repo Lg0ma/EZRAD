@@ -3,7 +3,7 @@
 
 EzRad – X-Ray Management System
 
-RadiTech is a Laboratory Information System (LIS) designed to streamline radiology workflows. It provides seamless scheduling, secure data storage, and efficient image management for medical exams such as X-rays.
+EzRad is a Laboratory Information System (LIS) designed to streamline radiology workflows. It provides seamless scheduling, secure data storage, and efficient image management for medical exams such as X-rays.
 
 This project integrates a React + Tailwind CSS + Vite frontend, a FastAPI backend, and a Supabase database for authentication, data persistence, and file storage.
 
